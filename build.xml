@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="wikidata" default="build">
+
+  <!-- Compiler options -->
+  
+  <property name="compiler.debug" value="on"/>
+  <property name="compiler.generate.no.warnings" value="off"/>
+  <property name="compiler.args" value=""/>
+  <property name="compiler.max.memory" value="128m"/>
+
+  <!-- Project Libraries -->
+  
+  <path id="classpath">
+    <pathelement location="${basedir}/lib/SuperCSV-1.52.jar"/>
+    <pathelement location="${basedir}/lib/commons-cli-1.0.jar"/>
+    <pathelement location="${basedir}/lib/commons-codec-1.3.jar"/>
+    <pathelement location="${basedir}/lib/commons-collections-3.2.1.jar"/>
+    <pathelement location="${basedir}/lib/commons-httpclient-3.1.jar"/>
+    <pathelement location="${basedir}/lib/commons-io-1.4.jar"/>
+    <pathelement location="${basedir}/lib/commons-lang-2.4.jar"/>
+    <pathelement location="${basedir}/lib/commons-logging-1.1.1.jar"/>
+    <pathelement location="${basedir}/lib/cssparser-0.9.5.jar"/>
+    <pathelement location="${basedir}/lib/htmlunit-2.5.jar"/>
+    <pathelement location="${basedir}/lib/htmlunit-core-js-2.5.jar"/>
+    <pathelement location="${basedir}/lib/icu4j_3_4.jar"/>
+    <pathelement location="${basedir}/lib/js.jar"/>
+    <pathelement location="${basedir}/lib/log4j-1.3alpha-7.jar"/>
+    <pathelement location="${basedir}/lib/mysql-connector-java-5.0.4-bin.jar"/>
+    <pathelement location="${basedir}/lib/nekohtml-1.9.12.jar"/>
+    <pathelement location="${basedir}/lib/sac-1.3.jar"/>
+    <pathelement location="${basedir}/lib/serializer-2.7.1.jar"/>
+    <pathelement location="${basedir}/lib/sparta.jar"/>
+    <pathelement location="${basedir}/lib/xalan-2.7.1.jar"/>
+    <pathelement location="${basedir}/lib/xercesImpl-2.8.1.jar"/>
+    <pathelement location="${basedir}/lib/xml-apis-1.3.04.jar"/>
+    <pathelement location="${basedir}/lib/xom-1.1b5.jar"/>
+  </path>
+
+  <!-- Paths -->
+
+  <property name="output.dir" value="${basedir}/classes"/>
+
+  <path id="sourcepath">
+    <dirset dir="${basedir}">
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile" description="Compile production classes">
+    <mkdir dir="${output.dir}"/>
+    <javac destdir="${output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" includeantruntime="false">
+      <compilerarg line="${compiler.args}"/>
+      <classpath refid="classpath"/>
+      <src refid="sourcepath"/>
+    </javac>
+  </target>
+  
+  <target name="clean" description="cleanup all">
+    <delete dir="${output.dir}"/>
+  </target>
+  
+  <target name="build" depends="clean, compile" description="build all"/>
+</project>

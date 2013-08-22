@@ -1,0 +1,29 @@
+Cemeteries-Cemetery records
+Finding aids-Finding aid
+Church records-Church records
+Churches-Church records
+Directories-Directory records
+Ethnic and cultural-Ethnic/Cultural
+Military-Military records
+Cemetery records-Cemetery records
+Census records-Census records
+Family bibles-Family bible
+Family histories-?biogra:Biography?bible:Family bible?Family tree
+blank-?bible:Family bible?biogra:Biography?genealog|family tree|pedigree:Family tree?church:Church records?notarial:Legal/Court records?History
+Funeral homes-?cemetery:Cemetery records?Obitutaries
+General history-History
+Historic Newspapers-Newspaper article
+Historic newspapers-Newspaper article
+Historical societies-History
+Land records-Deed/Land records
+Legal records-?census:Census records?will|probate:Will/Probate records?tax:Tax records?Legal/Court records
+Libraries and archives-?vote:Voter records?voting:Voter records?census:Census records?tax:Tax records?Manuscript/Documents
+Manuscripts-Manuscripts/Documents
+Maps and gazetteers-Maps/Gazetteers
+Migration records-?immigra|emigra|natural|arrival|passenger|ship|citizen|admiss:Passenger/Immigration records?Migration records
+Obituaries-Obituaries
+Occupations-Occupation
+Other records-?voting|vote|poll:Voter records?alumni|student|school|prison?Institutional records?Directory records
+Periodicals-Periodical article
+Town and area histories-History
+Vital records-Vital records
