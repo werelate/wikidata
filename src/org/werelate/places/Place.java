@@ -120,14 +120,16 @@ public class Place implements Comparable {
    }
 
    public void addPreviousParent(String parentTitle, String fromYear, String toYear) {
-      if (previousParents.size() == 0) {
-         previousParents = new TreeSet<PreviousParent>(new Comparator() {
-            public int compare(Object o, Object o1) {
-               return ((PreviousParent)o).getParentTitle().compareToIgnoreCase(((PreviousParent)o1).getParentTitle());
-            }
-         });
+      if (!Util.isEmpty(parentTitle)) {
+         if (previousParents.size() == 0) {
+            previousParents = new TreeSet<PreviousParent>(new Comparator() {
+               public int compare(Object o, Object o1) {
+                  return ((PreviousParent)o).getParentTitle().compareToIgnoreCase(((PreviousParent)o1).getParentTitle());
+               }
+            });
+         }
+         previousParents.add(new PreviousParent(parentTitle, fromYear, toYear));
       }
-      previousParents.add(new PreviousParent(parentTitle, fromYear, toYear));
    }
 
    /**
@@ -282,14 +284,16 @@ public class Place implements Comparable {
    }
 
    public void addSeeAlsoPlace(String placeTitle, String reason) {
-      if (seeAlsoPlaces.size() == 0) {
-         seeAlsoPlaces = new TreeSet<SeeAlsoPlace>(new Comparator() {
-            public int compare(Object o, Object o1) {
-               return ((SeeAlsoPlace)o).getPlaceTitle().compareToIgnoreCase(((SeeAlsoPlace)o1).getPlaceTitle());
-            }
-         });
+      if (!Util.isEmpty(placeTitle)) {
+         if (seeAlsoPlaces.size() == 0) {
+            seeAlsoPlaces = new TreeSet<SeeAlsoPlace>(new Comparator() {
+               public int compare(Object o, Object o1) {
+                  return ((SeeAlsoPlace)o).getPlaceTitle().compareToIgnoreCase(((SeeAlsoPlace)o1).getPlaceTitle());
+               }
+            });
+         }
+         seeAlsoPlaces.add(new SeeAlsoPlace(placeTitle, reason));
       }
-      seeAlsoPlaces.add(new SeeAlsoPlace(placeTitle, reason));
    }
 
    public Set<ContainedPlace> getContainedPlaces() {
@@ -297,14 +301,16 @@ public class Place implements Comparable {
    }
 
    public void addContainedPlace(String placeTitle, String type, boolean also) {
-      if (containedPlaces.size() == 0) {
-         containedPlaces = new TreeSet<ContainedPlace>(new Comparator() {
-            public int compare(Object o, Object o1) {
-               return ((ContainedPlace)o).getPlaceTitle().compareToIgnoreCase(((ContainedPlace)o1).getPlaceTitle());
-            }
-         });
+      if (!Util.isEmpty(placeTitle)) {
+         if (containedPlaces.size() == 0) {
+            containedPlaces = new TreeSet<ContainedPlace>(new Comparator() {
+               public int compare(Object o, Object o1) {
+                  return ((ContainedPlace)o).getPlaceTitle().compareToIgnoreCase(((ContainedPlace)o1).getPlaceTitle());
+               }
+            });
+         }
+         containedPlaces.add(new ContainedPlace(placeTitle, type, also));
       }
-      containedPlaces.add(new ContainedPlace(placeTitle, type, also));
    }
 
    public void setStandard(PlaceStandard standard) {
