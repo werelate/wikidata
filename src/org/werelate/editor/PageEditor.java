@@ -1,5 +1,6 @@
 package org.werelate.editor;
 
+import org.apache.commons.httpclient.cookie.CookiePolicy;
 import org.apache.log4j.Logger;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.NameValuePair;
@@ -71,6 +72,9 @@ public class PageEditor {
       this.client.getParams().setParameter("http.protocol.content-charset", "UTF-8");
       this.client.getParams().setParameter("http.socket.timeout", TIMEOUT_MILLIS);
       this.client.getParams().setParameter("http.connection.timeout", TIMEOUT_MILLIS);
+      // TODO necessary?
+      this.client.getParams().setParameter("http.protocol.single-cookie-header", true);
+      this.client.getParams().setCookiePolicy(CookiePolicy.BROWSER_COMPATIBILITY);
    }
 
    public String getMockContents()
