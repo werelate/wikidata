@@ -7,6 +7,7 @@ import org.werelate.utils.Util;
 import java.io.*;
 import java.util.*;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import nu.xom.ParsingException;
 import nu.xom.Element;
@@ -130,6 +131,15 @@ public class ExtractPlaces extends StructuredDataParser
            "voivodship"
    ));
 
+   // {{wikipedia-notice|wikipedia page name}}
+   private static final Pattern WIKIPEDIA_PATTERN = Pattern.compile("\\{\\{wikipedia-notice\\|(.+?)\\}\\}", Pattern.CASE_INSENSITIVE);
+   // {{moreinfo wikipedia|wikipedia page name}}
+   private static final Pattern WIKIPEDIA2_PATTERN = Pattern.compile("\\{\\{moreinfo wikipedia\\|(.+?)\\}\\}", Pattern.CASE_INSENSITIVE);
+   // {{source-getty|id}}
+   private static final Pattern GETTY_PATTERN = Pattern.compile("\\{\\{source-getty\\|(.+?)\\}\\}", Pattern.CASE_INSENSITIVE);
+   // {{source-fhlc|id}}
+   private static final Pattern FHLC_PATTERN = Pattern.compile("\\{\\{source-fhlc\\|(.+?)\\}\\}", Pattern.CASE_INSENSITIVE);
+
    private static class Place {
       String name;
       List<String> altNames;
@@ -138,6 +148,7 @@ public class ExtractPlaces extends StructuredDataParser
       List<String> alsoLocatedIns;
       String latitude;
       String longitude;
+      List<String> sources;
 
       Place() {
          name = "";
@@ -147,6 +158,7 @@ public class ExtractPlaces extends StructuredDataParser
          alsoLocatedIns = new ArrayList<String>();
          latitude = "";
          longitude = "";
+         sources = new ArrayList<String>();
       }
    }
 
@@ -154,6 +166,40 @@ public class ExtractPlaces extends StructuredDataParser
       placeMap = new TreeMap<Integer,Place>();
       titleMap = new HashMap<String, Integer>();
       redirectMap = new HashMap<String,String>();
+   }
+
+   private static String noTilde(String place) {
+      return place.replace("~"," ");
+   }
+
+   private static String noColon(String place) {
+      return place.replace(":"," ");
+   }
+
+   private static String noLink(String source) {
+      if (source.startsWith("[[") && source.endsWith("]]")) {
+         source = source.substring(2, source.length()-2);
+         int pos = source.indexOf('|');
+         if (pos > 0) {
+            source = source.substring(pos+1);
+         }
+         else {
+            pos = source.indexOf(':');
+            if (pos > 0) {
+               source = source.substring(pos+1);
+            }
+         }
+      }
+      return source;
+   }
+
+   private static boolean addSource(Pattern p, String label, String text, List<String> sources) {
+      Matcher m = p.matcher(text);
+      if (m.find()) {
+         sources.add(label+":"+m.group(1));
+         return true;
+      }
+      return false;
    }
 
    public void parse(String title, String text, int pageId, int latestRevId, String username, String timestamp, String comment) throws IOException, ParsingException
@@ -171,6 +217,7 @@ public class ExtractPlaces extends StructuredDataParser
          else {
             String[] split = splitStructuredWikiText("place", text);
             String structuredData = split[0];
+            String unstructuredData = split[1];
             if (!Util.isEmpty(structuredData)) {
                Place p = new Place();
                Element root = parseText(structuredData).getRootElement();
@@ -193,8 +240,12 @@ public class ExtractPlaces extends StructuredDataParser
                for (int i = 0; i < elms.size(); i++) {
                   elm = elms.get(i);
                   String name = elm.getAttributeValue("name");
+                  String source = elm.getAttributeValue("source");
                   if (name != null && name.length() > 0) {
-                     p.altNames.add(name);
+                     if (source != null && source.length() > 0) {
+                        name = noColon(name)+":"+noLink(source);
+                     }
+                     p.altNames.add(noTilde(name));
                   }
                }
 
@@ -206,7 +257,7 @@ public class ExtractPlaces extends StructuredDataParser
                      for (String type : types.split(",")) {
                         type = type.trim();
                         if (type.length() > 0) {
-                           p.types.add(type);
+                           p.types.add(noTilde(type));
                         }
                      }
                   }
@@ -226,6 +277,14 @@ public class ExtractPlaces extends StructuredDataParser
                p.latitude = getLatLon(root.getFirstChildElement("latitude"), true);
                p.longitude = getLatLon(root.getFirstChildElement("longitude"), false);
 
+               // add sources
+               if (!addSource(WIKIPEDIA_PATTERN, "wikipedia", unstructuredData, p.sources)) {
+                  addSource(WIKIPEDIA2_PATTERN, "wikipedia", unstructuredData, p.sources);
+               }
+               addSource(GETTY_PATTERN, "getty", unstructuredData, p.sources);
+               addSource(FHLC_PATTERN, "fhlc", unstructuredData, p.sources);
+
+               // add to maps
                placeMap.put(pageId, p);
                titleMap.put(title, pageId);
             }
@@ -240,7 +299,7 @@ public class ExtractPlaces extends StructuredDataParser
             try {
                double d = Double.parseDouble(ll);
                if ((isLat && d >= -90.0 && d <= 90.0) ||
-                   (!isLat && d >= -180.0 && d <= 180.0)) {
+                       (!isLat && d >= -180.0 && d <= 180.0)) {
                   return ll; // must be a valid double
                }
             }
@@ -306,9 +365,13 @@ public class ExtractPlaces extends StructuredDataParser
          int id = entry.getKey();
          Place p = entry.getValue();
          if (!addName(id, p.name, map)) {
-            logger.error("Primary name token not found for: "+p.name+", "+p.locatedIn);
+            logger.error("Primary name token not found for: " + p.name + ", " + p.locatedIn);
          }
          for (String altName : p.altNames) {
+            int pos = altName.indexOf(':');
+            if (pos >= 0) {
+               altName = altName.substring(0,pos);
+            }
             addName(id, altName, map);
          }
       }
@@ -327,7 +390,7 @@ public class ExtractPlaces extends StructuredDataParser
       }
       Integer id = titleMap.get(title);
       if (id == null) {
-         logger.error("Title not found: "+title);
+         logger.error("Title not found: " + title);
          return -1;
       }
       return id;
@@ -337,7 +400,7 @@ public class ExtractPlaces extends StructuredDataParser
       return placeMap;
    }
 
-   private static String nobar(String s) {
+   private static String noBar(String s) {
       if (s == null) return "";
       return s.replace("|", "");
    }
@@ -350,7 +413,7 @@ public class ExtractPlaces extends StructuredDataParser
    }
 
    // Generate various lists of places
-   // 0=pages.xml 1=place_words.csv 2=places.csv
+   // args array: 0=pages.xml 1=place_words.csv 2=places.csv
    public static void main(String[] args)
            throws IOException, ParsingException
    {
@@ -368,11 +431,11 @@ public class ExtractPlaces extends StructuredDataParser
          String word = entry.getKey();
          Set<Integer> ids = entry.getValue();
          if (ids.size() > 400) {
-            logger.warn("large id list: "+word+"="+ids.size());
+            logger.warn("large id list: " + word + "=" + ids.size());
          }
          String idsString = Util.join(",",ids);
          if (idsString.length() > 8192) {
-            logger.error("Ids too long: "+word);
+            logger.error("Ids too long: " + word);
          }
          else {
             out.println(word+"|"+idsString);
@@ -387,7 +450,7 @@ public class ExtractPlaces extends StructuredDataParser
          int placeId = entry.getKey();
          int locatedInId = self.getPlaceId(p.locatedIn);
          if (locatedInId < 0) {
-            logger.error("Bad locatedInId for: "+placeId);
+            logger.error("Bad locatedInId for: " + placeId);
             continue;
          }
 
@@ -398,13 +461,13 @@ public class ExtractPlaces extends StructuredDataParser
                aliIds.add(aliId);
             }
             else {
-               logger.error("Bad alsoLocatedIn for: "+placeId);
+               logger.error("Bad alsoLocatedIn for: " + placeId);
             }
          }
 
-         String altNames = nobar(Util.join(",", p.altNames));
-         if (altNames.length() > 1024) {
-            logger.error("Alt names too long: "+altNames+"="+altNames.length());
+         String altNames = Util.join("~", p.altNames);
+         if (altNames.length() > 4096) {
+            logger.error("Alt names too long: " + altNames + "=" + altNames.length());
             altNames = "";
          }
 
@@ -416,21 +479,22 @@ public class ExtractPlaces extends StructuredDataParser
             level++;
             parentId = self.getPlaceId(placeMap.get(parentId).locatedIn);
             if (parentId < 0) {
-               logger.error("Bad country for: "+placeId);
+               logger.error("Bad country for: " + placeId);
             }
          }
 
          StringBuilder buf = new StringBuilder();
          buf.append(placeId);
-         append(buf, nobar(p.name));
-         append(buf, altNames);
-         append(buf, nobar(Util.join(",", p.types)));
+         append(buf, noBar(p.name));
+         append(buf, noBar(altNames));
+         append(buf, noBar(Util.join("~", p.types)));
          append(buf, Integer.toString(locatedInId));
-         append(buf, Util.join(",",aliIds));
+         append(buf, Util.join("~", aliIds));
          append(buf, Integer.toString(level));
          append(buf, Integer.toString(countryId));
          append(buf, p.latitude);
          append(buf, p.longitude);
+         append(buf, noBar(Util.join("~", p.sources)));
          out.println(buf.toString());
       }
       out.close();
