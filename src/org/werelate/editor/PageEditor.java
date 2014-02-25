@@ -221,8 +221,7 @@ public class PageEditor {
          if (doGetHttp(url, edit)) {
             return;
          }
-         Util.sleep(RETRY_WAIT_MILLIS);
-         resetHttpClient();
+         reset();
       }
       throw new RuntimeException("Get failed: " + title);
    }
@@ -292,11 +291,18 @@ public class PageEditor {
             if (doPostHttp(url)) {
                return;
             }
-          Util.sleep(RETRY_WAIT_MILLIS);
-          resetHttpClient();
+            reset();
          }
       }
       throw new RuntimeException("Post failed: " + title);
+   }
+
+   private void reset() {
+      Util.sleep(RETRY_WAIT_MILLIS/2);
+      logout();
+      loggedIn = false;
+      Util.sleep(RETRY_WAIT_MILLIS/2);
+      resetHttpClient();
    }
 
    private boolean doPostHttp(String url) {
@@ -353,6 +359,21 @@ public class PageEditor {
       }
 
       return true;
+   }
+
+   private void logout() {
+      String url = constructUrl("Special:Userlogout", null, null);
+      GetMethod m = new GetMethod(url);
+      try {
+         client.executeMethod(m);
+      }
+      catch (IOException e)
+      {
+         logger.warn("IOException on "+ url + " -> " + e);
+      }
+      finally {
+         m.releaseConnection();
+      }
    }
 
    private boolean login() {
