@@ -345,6 +345,7 @@ public class PageEditor {
             }
             else if (contents.contains(STILL_EDITING)) {
                logger.warn("Still editing");
+               logger.warn(contents);
                return false;
             }
          }
