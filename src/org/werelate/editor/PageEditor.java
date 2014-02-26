@@ -34,7 +34,7 @@ public class PageEditor {
    private static final String AGENT_USER_NAME = "WeRelate agent";
    private static final String NOT_LOGGED_IN = "sign in</a> to edit pages.";
    private static final String STILL_EDITING = "<h1 class=\"firstHeading\">Editing";
-   private static int MAX_RETRIES = 15;
+   private static int MAX_RETRIES = 5;
    private static int RETRY_WAIT_MILLIS = 20000;
    private static int TIMEOUT_MILLIS = 60000;
    private static Logger logger = Logger.getRootLogger();
@@ -292,16 +292,18 @@ public class PageEditor {
                return;
             }
             reset();
+            doGet(title, true);
+            Util.sleep(RETRY_WAIT_MILLIS);
          }
       }
-      throw new RuntimeException("Post failed: " + title);
+      logger.error("Post failed: " + title);
    }
 
    private void reset() {
-      Util.sleep(RETRY_WAIT_MILLIS/2);
+      Util.sleep(RETRY_WAIT_MILLIS);
       logout();
       loggedIn = false;
-      Util.sleep(RETRY_WAIT_MILLIS/2);
+      Util.sleep(RETRY_WAIT_MILLIS);
       resetHttpClient();
    }
 

@@ -203,7 +203,7 @@ public class WikipediaUpdateParser implements WikiPageParser {
                      editor.setPostVariable("wpSummary", "Updated from Wikipedia");
                      editor.doPost();
                   }
-                  Util.sleep(2500);
+                  Util.sleep(1500);
                   updateCount++;
                   logger.info("update: "+wrTitle+"  ->  "+title);
                   if (updateCount % 1000 == 0) System.out.print(".");
