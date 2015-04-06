@@ -17,6 +17,8 @@ import java.util.regex.Matcher;
 import nu.xom.ParsingException;
 
 public class WikipediaUpdate {
+   public static final int UPDATE_DELAY_MILLIS = 3000;
+
    private static final Logger logger = Logger.getLogger("org.werelate.wikipedia");
 
    public static void main(String [] args) {
@@ -180,7 +182,7 @@ public class WikipediaUpdate {
                      System.out.print(".");
                   }
                }
-               Util.sleep(1500);
+               Util.sleep(UPDATE_DELAY_MILLIS);
             }
             else {
                updateCount++;
