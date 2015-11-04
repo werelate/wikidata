@@ -14,9 +14,12 @@ import java.util.regex.Pattern;
 public class GeneratePlaceAbbrevs {
    public static final int LEVEL_PRIORITY = 10;
    public static final int STD_PRIORITY = 0;
-   public static final int ALI_PRIORITY = 1;
-   public static final int TYPE_PRIORITY = 3;
+   public static final int NAMEWORD_PRIORITY = 1;
+   public static final int UNLINKED_PRIORITY = 1;
+   public static final int ALI_PRIORITY = 2;
    public static final int ALT_PRIORITY = 14;
+
+   private static Set<String> linkedPlaces = new HashSet<String>();
 
    private static class Place {
       String id;
@@ -62,22 +65,6 @@ public class GeneratePlaceAbbrevs {
          this.path = path;
          this.priority = priority;
       }
-
-      @Override
-      public boolean equals(Object o) {
-         if (this == o) return true;
-         if (o == null || getClass() != o.getClass()) return false;
-
-         Ancestor ancestor = (Ancestor) o;
-
-         return path.equals(ancestor.path);
-
-      }
-
-      @Override
-      public int hashCode() {
-         return path.hashCode();
-      }
    }
 
    public static String getTitle(Map<String, Place> placeMap, Place p) {
@@ -91,8 +78,8 @@ public class GeneratePlaceAbbrevs {
       return buf.toString();
    }
 
-   public static Set<Ancestor> getAncestors(Map<String, Place> placeMap, String placeId, int priority, int recursion) {
-      Set<Ancestor> results = new HashSet<Ancestor>();
+   public static List<Ancestor> getAncestors(Map<String, Place> placeMap, String placeId, int priority, int recursion) {
+      List<Ancestor> results = new ArrayList<Ancestor>();
 
       if (recursion >= 8) {
          return results;
@@ -103,14 +90,18 @@ public class GeneratePlaceAbbrevs {
          return results;
       }
 
-      // get suffixes
       Place p = placeMap.get(placeId);
+
+      // is this place linked-to from anyone in WeRelate?
+      int unlinkedPriority = linkedPlaces.contains(getTitle(placeMap, p)) ? 0 : UNLINKED_PRIORITY;
+
+      // get suffixes
       List<Ancestor> ancestors = new ArrayList<Ancestor>();
-      ancestors.addAll(getAncestors(placeMap, p.locatedInId, STD_PRIORITY, recursion + 1));
+      ancestors.addAll(getAncestors(placeMap, p.locatedInId, unlinkedPriority + STD_PRIORITY, recursion + 1));
       if (!"0".equals(p.locatedInId)) {
          for (String ali : p.alsoLocatedInIds) {
             if (!ali.equals(p.locatedInId)) {
-               ancestors.addAll(getAncestors(placeMap, ali, ALI_PRIORITY, recursion + 1));
+               ancestors.addAll(getAncestors(placeMap, ali, unlinkedPriority + ALI_PRIORITY, recursion + 1));
             }
          }
       }
@@ -150,8 +141,17 @@ public class GeneratePlaceAbbrevs {
               .replaceAll("'", "")
               .replaceAll("[^a-z0-9]", " ")
               .replaceAll("\\s+", " ")
-              .replaceAll(" ,", ",")
               .trim();
+   }
+
+   public static int countChars(String s, char ch) {
+      int from = 0;
+      int count = 0;
+      while (from < s.length() && s.indexOf(ch, from) >= 0) {
+         from = s.indexOf(ch, from) + 1;
+         count++;
+      }
+      return count;
    }
 
    private static HashSet<String> seenAbbrevTitles = new HashSet<String>();
@@ -189,7 +189,9 @@ public class GeneratePlaceAbbrevs {
       }
    }
 
-   // 0=places.csv 1=place_abbrevs.tsv
+   // linked places: select distinct pl_title from pagelinks where pl_namespace = 106 and exists (select * from page where page_namespace = 106 and page_title = pl_title and page_is_redirect = 0) and exists (select * from page where page_id = pl_from and page_namespace = 108);
+
+   // 0=places.csv 1=linkedplaces.tsv 2=place_abbrevs.tsv
    public static void main(String[] args) throws IOException {
       Map<String,Place> placeMap = new HashMap<String,Place>();
       HashSet<String> seenTitles = new HashSet<String>();
@@ -205,7 +207,18 @@ public class GeneratePlaceAbbrevs {
       }
       in.close();
 
-      PrintWriter out = new PrintWriter(new FileWriter(args[1]));
+      // read linkedplaces into a set
+      in = new BufferedReader(new FileReader(args[1]));
+      while (in.ready()) {
+         String line = in.readLine();
+         if (line.length() > 0) {
+            linkedPlaces.add(line.replace('_', ' '));
+         }
+      }
+      in.close();
+
+
+      PrintWriter out = new PrintWriter(new FileWriter(args[2]));
 
       // for each place in map
       for (String id : placeMap.keySet()) {
@@ -228,15 +241,18 @@ public class GeneratePlaceAbbrevs {
          seenTitles.add(title);
 
          // get ancestors
-         Set<Ancestor> ancestors = getAncestors(placeMap, p.id, 0, 0);
+         int namePriority;
+         List<Ancestor> ancestors = getAncestors(placeMap, p.id, 0, 0);
          for (Ancestor ancestor : ancestors) {
             // write primary name
-            writeAbbrevs(out, p.name, p.name, ancestor.path, title, ancestor.priority);
+            namePriority = countChars(p.name, ' ') * NAMEWORD_PRIORITY;
+            writeAbbrevs(out, p.name, p.name, ancestor.path, title, namePriority + ancestor.priority);
             // write alt names
             for (String altName : p.altNames) {
                if (altName.length() > 0 && // ignore empty alt names
                    !altName.equals(altName.toUpperCase())) { // ignore abbrevs
-                  writeAbbrevs(out, altName, p.name, ancestor.path, title, ALT_PRIORITY + ancestor.priority);
+                  namePriority = countChars(altName, ' ') * NAMEWORD_PRIORITY;
+                  writeAbbrevs(out, altName, p.name, ancestor.path, title, namePriority + ALT_PRIORITY + ancestor.priority);
                }
             }
          }
