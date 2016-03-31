@@ -249,6 +249,12 @@ public class ExtractPlaces extends StructuredDataParser
                   }
                }
 
+               // add altNames for danish oe
+               String n = p.name.replace("Ø", "O").replace("ø", "o");
+               if (!n.equals(p.name)) {
+                  p.altNames.add(noTilde(n));
+               }
+
                // set types
                elm = root.getFirstChildElement("type");
                if (elm != null) {
@@ -339,9 +345,9 @@ public class ExtractPlaces extends StructuredDataParser
       if (buf.length() > 0) {
          result = buf.toString();
       }
-      if (!foundNameWord) {
-         logger.info("No name words found: "+name);
-      }
+//      if (!foundNameWord) {
+//         logger.info("No name words found: "+name);
+//      }
       return result;
    }
 
@@ -412,6 +418,67 @@ public class ExtractPlaces extends StructuredDataParser
       }
    }
 
+   private boolean containsCycle(int id, String otherTitle, int level) {
+      if (level >= 10) {
+         return false;
+      }
+
+      int otherId = getPlaceId(otherTitle);
+      if (otherId == 0) { // not found
+         logger.warn("id not found for title "+otherTitle);
+         return false;
+      }
+      Place other = placeMap.get(otherId);
+      if (other == null) { // not found
+         logger.warn("place not found for id "+otherId+" title "+otherTitle);
+         return false;
+      }
+
+      // check same id
+      if (id == otherId) {
+         return true;
+      }
+      // check locatedIn and alsoLocatedIns
+      if (other.locatedIn != null && !other.locatedIn.isEmpty() && containsCycle(id, other.locatedIn, level+1)) {
+         return true;
+      }
+      for (String ali : other.alsoLocatedIns) {
+         if (containsCycle(id, ali, level+1)) {
+            return true;
+         }
+      }
+
+      return false;
+   }
+
+   private void removeCyclicAlsoLocatedIns() {
+      Map<Integer,Set<String>> removals = new HashMap<Integer,Set<String>>();
+
+      for (Map.Entry<Integer, Place> entry : placeMap.entrySet()) {
+         int id = entry.getKey();
+         Place p = entry.getValue();
+         for (String ali : p.alsoLocatedIns) {
+            if (getPlaceId(ali) == 0 || containsCycle(id, ali, 0)) {
+               Set<String> alis = removals.get(id);
+               if (alis == null) {
+                  alis = new HashSet<String>();
+                  removals.put(id, alis);
+               }
+               alis.add(ali);
+            }
+         }
+      }
+
+      for (Map.Entry<Integer, Set<String>> entry : removals.entrySet()) {
+         int id = entry.getKey();
+         Place p = placeMap.get(id);
+         for (String ali : entry.getValue()) {
+            logger.warn("Removing cycle from "+p.name+", "+p.locatedIn+" to "+ali);
+            p.alsoLocatedIns.remove(ali);
+         }
+      }
+   }
+
    // Generate various lists of places
    // args array: 0=pages.xml 1=place_words.csv 2=places.csv
    public static void main(String[] args)
@@ -424,6 +491,8 @@ public class ExtractPlaces extends StructuredDataParser
       InputStream in = new FileInputStream(args[0]);
       wikiReader.read(in);
       in.close();
+
+      self.removeCyclicAlsoLocatedIns();
 
       Map<String,Set<Integer>> wordMap = self.generateWordMap();
       PrintWriter out = new PrintWriter(args[1]);
