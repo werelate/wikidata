@@ -77,7 +77,7 @@ public class ExtractSources extends StructuredDataParser
             Element elm = elms.get(i);
             String title = clean(elm.getAttributeValue("title"), true);
             String location = clean(elm.getAttributeValue("source_location"), true);
-            if (!title.isEmpty()) {
+            if (!title.isEmpty() || !location.isEmpty()) {
                 if (buf.length() > 0) {
                     buf.append("|");
                 }
@@ -86,14 +86,14 @@ public class ExtractSources extends StructuredDataParser
         }
         if (buf.length() == 0) {
             String title = clean(getField(root, "repository_name"), true);
-            if (!title.isEmpty()) {
+            String location = clean(getField(root, "url"), true);
+            if (location.isEmpty()) {
+                location = clean(getField(root, "call_number"), true);
+            }
+            if (!title.isEmpty() || !location.isEmpty()) {
                 String addr = clean(getField(root, "repository_addr"), true);
                 if (!addr.isEmpty()) {
                     title = title + " " + addr;
-                }
-                String location = clean(getField(root, "url"), true);
-                if (!location.isEmpty()) {
-                    location = clean(getField(root, "call_number"), true);
                 }
                 buf.append(title+"~"+location);
             }
