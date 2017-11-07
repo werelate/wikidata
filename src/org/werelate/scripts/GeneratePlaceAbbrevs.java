@@ -174,7 +174,7 @@ public class GeneratePlaceAbbrevs {
    }
 
    private static HashSet<String> seenAbbrevTitles = new HashSet<String>();
-   private static int id = 0;
+   private static int id = 1;
 
    public static void write(PrintWriter out, String abbrev, String name, String primaryName, String title, int priority, double lat, double lon) {
       // track so we avoid duplicates
