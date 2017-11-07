@@ -1,6 +1,11 @@
 #!/bin/bash
 cd "$( dirname "${BASH_SOURCE[0]}" )"
-java -Xmx1024m -Dfile.encoding=UTF-8 -classpath \
+java -Xmx1024m \
+-Dfile.encoding=UTF-8 \
+-DentityExpansionLimit=2147480000 \
+-DtotalEntitySizeLimit=2147480000 \
+-Djdk.xml.totalEntitySizeLimit=2147480000 \
+-classpath \
 ../classes:\
 ../conf:\
 ../lib/log4j-1.3alpha-7.jar:\

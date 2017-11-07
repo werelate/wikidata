@@ -1,8 +1,11 @@
 package org.werelate.scripts;
 
+import org.apache.log4j.Logger;
 import org.werelate.utils.Util;
 
 import java.io.*;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,6 +24,8 @@ public class GeneratePlaceAbbrevs {
 
    private static Set<String> linkedPlaces = new HashSet<String>();
 
+   protected static final Logger logger = Logger.getLogger("org.werelate.GeneratePlaceAbbrevs");
+
    private static class Place {
       String id;
       String name;
@@ -28,10 +33,12 @@ public class GeneratePlaceAbbrevs {
       Set<String> types;
       String locatedInId;
       Set<String> alsoLocatedInIds;
+      double lat;
+      double lon;
    }
 
    public static Place constructPlace(String line) {
-      String[] fields = line.split("\\|");
+      String[] fields = line.split("\t");
       Place p = new Place();
       p.id = fields[0];
       p.name = fields[1];
@@ -54,6 +61,18 @@ public class GeneratePlaceAbbrevs {
       }
       else {
          p.alsoLocatedInIds = new HashSet<String>();
+      }
+      if (fields.length > 8 && fields[8].length() > 0) {
+         p.lat = Double.parseDouble(fields[8]);
+      }
+      else {
+         p.lat = 0.0;
+      }
+      if (fields.length > 9 && fields[9].length() > 0) {
+         p.lon = Double.parseDouble(fields[9]);
+      }
+      else {
+         p.lon = 0.0;
       }
       return p;
    }
@@ -155,22 +174,32 @@ public class GeneratePlaceAbbrevs {
    }
 
    private static HashSet<String> seenAbbrevTitles = new HashSet<String>();
+   private static int id = 0;
 
-   public static void write(PrintWriter out, String abbrev, String name, String primaryName, String title, int priority) {
-      // track so we avoid dup primary keys
+   public static void write(PrintWriter out, String abbrev, String name, String primaryName, String title, int priority, double lat, double lon) {
+      // track so we avoid duplicates
       if (seenAbbrevTitles.contains(abbrev+"|"+title)) {
          return;
       }
       seenAbbrevTitles.add(abbrev + "|" + title);
+      if (abbrev.length() > 191) {
+         logger.error("abbrev too long: "+ abbrev);
+         return;
+      }
+      NumberFormat nf = DecimalFormat.getInstance();
+      nf.setMaximumIntegerDigits(3);
+      nf.setMaximumIntegerDigits(1);
+      nf.setMaximumFractionDigits(6);
+      nf.setMinimumFractionDigits(1);
 
-      out.printf("%s\t%s\t%s\t%s\t%d\n", abbrev, name, primaryName, title, priority);
+      out.printf("%d\t%s\t%s\t%s\t%s\t%s\t%s\t%d\n", id++, abbrev, name, primaryName, title, nf.format(lat), nf.format(lon), priority);
    }
 
-   public static void writeAbbrevs(PrintWriter out, String name, String primaryName, List<String> path, String title, int priority) {
+   public static void writeAbbrevs(PrintWriter out, String name, String primaryName, List<String> path, String title, int priority, double lat, double lon) {
       title = title.replace(' ', '_');
 
       if (path.size() == 0) {
-         write(out, cleanAbbrev(name), clean(name), clean(primaryName), title, priority);
+         write(out, cleanAbbrev(name), clean(name), clean(primaryName), title, priority, lat, lon);
          return;
       }
 
@@ -181,23 +210,21 @@ public class GeneratePlaceAbbrevs {
       for (int i = 0; i < path.size(); i++) {
          suffix = ", " + Util.join(", ", path.subList(i, path.size()));
          String abbrev = cleanAbbrev(name + suffix);
-         write(out, abbrev, fullName, primaryFullName, title, priority);
+         write(out, abbrev, fullName, primaryFullName, title, priority, lat, lon);
          if (name.indexOf('(') > 0) {
             abbrev = cleanAbbrev(name.substring(0, name.indexOf('(')) + suffix);
-            write(out, abbrev, fullName, primaryFullName, title, priority);
+            write(out, abbrev, fullName, primaryFullName, title, priority, lat, lon);
          }
       }
    }
 
-   // linked places: select distinct pl_title from pagelinks where pl_namespace = 106 and exists (select * from page where page_namespace = 106 and page_title = pl_title and page_is_redirect = 0) and exists (select * from page where page_id = pl_from and page_namespace = 108);
-
-   // 0=places.csv 1=linkedplaces.tsv 2=place_abbrevs.tsv
+   // 0=places.tsv 1=linkedplaces.tsv 2=place_abbrevs.tsv
    public static void main(String[] args) throws IOException {
       Map<String,Place> placeMap = new HashMap<String,Place>();
       HashSet<String> seenTitles = new HashSet<String>();
 
       // read places into map of places
-      BufferedReader in = new BufferedReader(new FileReader(args[0]));
+      BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(args[0]), "UTF-8"));
       while (in.ready()) {
          String line = in.readLine();
          Place p = constructPlace(line);
@@ -208,7 +235,7 @@ public class GeneratePlaceAbbrevs {
       in.close();
 
       // read linkedplaces into a set
-      in = new BufferedReader(new FileReader(args[1]));
+      in = new BufferedReader(new InputStreamReader(new FileInputStream(args[1]), "UTF-8"));
       while (in.ready()) {
          String line = in.readLine();
          if (line.length() > 0) {
@@ -218,7 +245,7 @@ public class GeneratePlaceAbbrevs {
       in.close();
 
 
-      PrintWriter out = new PrintWriter(new FileWriter(args[2]));
+      PrintWriter out = new PrintWriter(args[2], "UTF-8");
 
       // for each place in map
       for (String id : placeMap.keySet()) {
@@ -234,11 +261,11 @@ public class GeneratePlaceAbbrevs {
 
          // it's rare, but possible for two places to have the same constructed title because of missing spaces in the real page title
          // skip these if it happens
-         if (seenTitles.contains(title)) {
-            System.out.println("Skipping "+title);
-            continue;
-         }
-         seenTitles.add(title);
+//         if (seenTitles.contains(title)) {
+//            System.out.println("Skipping "+title);
+//            continue;
+//         }
+//         seenTitles.add(title);
 
          // get ancestors
          int namePriority;
@@ -246,13 +273,13 @@ public class GeneratePlaceAbbrevs {
          for (Ancestor ancestor : ancestors) {
             // write primary name
             namePriority = countChars(p.name, ' ') * NAMEWORD_PRIORITY;
-            writeAbbrevs(out, p.name, p.name, ancestor.path, title, namePriority + ancestor.priority);
+            writeAbbrevs(out, p.name, p.name, ancestor.path, title, namePriority + ancestor.priority, p.lat, p.lon);
             // write alt names
             for (String altName : p.altNames) {
                if (altName.length() > 0 && // ignore empty alt names
                    !altName.equals(altName.toUpperCase())) { // ignore abbrevs
                   namePriority = countChars(altName, ' ') * NAMEWORD_PRIORITY;
-                  writeAbbrevs(out, altName, p.name, ancestor.path, title, namePriority + ALT_PRIORITY + ancestor.priority);
+                  writeAbbrevs(out, altName, p.name, ancestor.path, title, namePriority + ALT_PRIORITY + ancestor.priority, p.lat, p.lon);
                }
             }
          }
