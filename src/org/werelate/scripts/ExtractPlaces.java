@@ -21,6 +21,7 @@ public class ExtractPlaces extends StructuredDataParser
    private Map<String,Integer> titleMap;
    private Map<String,String> redirectMap;
    private Set<String> linkedPlacesSet;
+   private Map<String,Integer> linkedPlacesMap;
 
    // keep in sync with places standardizer.properties
    private static Map<String,String> ABBREVS = new HashMap<String, String>();
@@ -144,6 +145,7 @@ public class ExtractPlaces extends StructuredDataParser
    private static final Pattern FHLC_PATTERN = Pattern.compile("\\{\\{source-fhlc\\|(.+?)\\}\\}", Pattern.CASE_INSENSITIVE);
 
    private static class Place {
+      String title;
       String name;
       List<String> altNames;
       List<String> types;
@@ -154,6 +156,7 @@ public class ExtractPlaces extends StructuredDataParser
       List<String> sources;
 
       Place() {
+         title = "";
          name = "";
          altNames = new ArrayList<String>();
          types = new ArrayList<String>();
@@ -170,6 +173,7 @@ public class ExtractPlaces extends StructuredDataParser
       titleMap = new HashMap<String, Integer>();
       redirectMap = new HashMap<String,String>();
       linkedPlacesSet = new HashSet<String>();
+      linkedPlacesMap = new HashMap<String, Integer>();
    }
 
    private static String noTilde(String place) {
@@ -227,6 +231,8 @@ public class ExtractPlaces extends StructuredDataParser
                Element root = parseText(structuredData).getRootElement();
                Element elm;
                Elements elms;
+
+               p.title = title;
 
                // set name + locatedIn
                int pos = title.indexOf(",");
@@ -317,6 +323,14 @@ public class ExtractPlaces extends StructuredDataParser
                      }
                      if (place.length() > 0) {
                         linkedPlacesSet.add(place);
+                        // only count user-entered place texts or exact gedcom matches
+                        if (pos < 0) {
+                           if (linkedPlacesMap.containsKey(place)) {
+                              linkedPlacesMap.put(place, linkedPlacesMap.get(place) + 1);
+                           } else {
+                              linkedPlacesMap.put(place, 1);
+                           }
+                        }
                      }
                   }
                }
@@ -506,6 +520,29 @@ public class ExtractPlaces extends StructuredDataParser
       }
    }
 
+   private String getFinalRedirectTarget(String title, int max) {
+      int i = 0;
+      while (redirectMap.containsKey(title)) {
+         // avoid infinite redirect loops
+         if (++i > max) {
+            return null;
+         }
+         title = redirectMap.get(title);
+      }
+      return title;
+   }
+
+
+   private void addCountsToRedirectTargets() {
+      for (String title : redirectMap.keySet()) {
+         String target = getFinalRedirectTarget(title, 10);
+         if (target != null) {
+            Integer count = linkedPlacesMap.containsKey(title) ? linkedPlacesMap.get(title) : 0;
+            linkedPlacesMap.put(target, (linkedPlacesMap.containsKey(target) ? linkedPlacesMap.get(target) : 0) + count);
+         }
+      }
+   }
+
    // Generate various lists of places
    // args array: 0=pages.xml 1=place_words.tsv 2=places.tsv 3=linkedplaces.tsv
    public static void main(String[] args)
@@ -520,6 +557,7 @@ public class ExtractPlaces extends StructuredDataParser
       in.close();
 
       self.removeCyclicAlsoLocatedIns();
+      self.addCountsToRedirectTargets();
 
       Map<String,Set<Integer>> wordMap = self.generateWordMap();
       PrintWriter out = new PrintWriter(args[1], "UTF-8");
@@ -546,6 +584,11 @@ public class ExtractPlaces extends StructuredDataParser
       Map<Integer,Place> placeMap = self.getPlaceMap();
       for (Map.Entry<Integer,Place> entry : placeMap.entrySet()) {
          Place p = entry.getValue();
+
+         int count = 0;
+         if (self.linkedPlacesMap.containsKey(p.title)) {
+            count = self.linkedPlacesMap.get(p.title);
+         }
 
          int placeId = entry.getKey();
          int locatedInId = self.getPlaceId(p.locatedIn);
@@ -601,6 +644,7 @@ public class ExtractPlaces extends StructuredDataParser
          append(buf, nf.format(p.latitude));
          append(buf, nf.format(p.longitude));
          append(buf, noTab(Util.join("~", p.sources)));
+         append(buf, Integer.toString(count));
          out.println(buf.toString());
       }
       out.close();
