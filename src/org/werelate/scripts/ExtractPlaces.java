@@ -50,6 +50,10 @@ public class ExtractPlaces extends StructuredDataParser
       ABBREVS.put("ft","fort");
    }
 
+   private Set<String> NOISE_WORDS = new HashSet<String>(Arrays.asList(
+           "of"
+   ));
+
    // keep in sync with places standardizer.properties
    private Set<String> TYPE_WORDS = new HashSet<String>(Arrays.asList(
            "amt",
@@ -373,8 +377,8 @@ public class ExtractPlaces extends StructuredDataParser
                   token = expansion;
                }
             }
-            if (!TYPE_WORDS.contains(token)) {
-               // ignore type words after a name word
+            if (!TYPE_WORDS.contains(token) && !NOISE_WORDS.contains(token)) {
+               // ignore type words and noise words after a name word
                if (!foundNameWord && buf.length() > 0) {
                   buf.setLength(0);
                }
