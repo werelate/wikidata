@@ -630,6 +630,19 @@ public class ExtractPlaces extends StructuredDataParser
             }
          }
 
+         double latitude = p.latitude;
+         double longitude = p.longitude;
+         int liid = self.getPlaceId(p.locatedIn);
+         while (liid > 0 && latitude == 0.0 && longitude == 0.0) {
+            Place lip = placeMap.get(liid);
+            if (lip == null) {
+               break;
+            }
+            latitude = lip.latitude;
+            longitude = lip.longitude;
+            liid = self.getPlaceId(lip.locatedIn);
+         }
+
          NumberFormat nf = DecimalFormat.getInstance();
          nf.setMaximumIntegerDigits(3);
          nf.setMinimumIntegerDigits(1);
@@ -645,8 +658,8 @@ public class ExtractPlaces extends StructuredDataParser
          append(buf, Util.join("~", aliIds));
          append(buf, Integer.toString(level));
          append(buf, Integer.toString(countryId));
-         append(buf, nf.format(p.latitude));
-         append(buf, nf.format(p.longitude));
+         append(buf, nf.format(latitude));
+         append(buf, nf.format(longitude));
          append(buf, noTab(Util.join("~", p.sources)));
          append(buf, Integer.toString(count));
          out.println(buf.toString());

@@ -1,3 +1,4 @@
 .idea/*
 *.iml
 classes/*
+shell/*.log
