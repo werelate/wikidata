@@ -188,7 +188,7 @@ public class GeneratePlaceAbbrevs {
       }
       NumberFormat nf = DecimalFormat.getInstance();
       nf.setMaximumIntegerDigits(3);
-      nf.setMaximumIntegerDigits(1);
+      nf.setMinimumIntegerDigits(1);
       nf.setMaximumFractionDigits(6);
       nf.setMinimumFractionDigits(1);
 
