@@ -56,87 +56,166 @@ public class ExtractPlaces extends StructuredDataParser
 
    // keep in sync with places standardizer.properties
    private Set<String> TYPE_WORDS = new HashSet<String>(Arrays.asList(
+           "administrative",
            "amt",
            "amtsgericht",
+           "ancient",
+           "and",
            "area",
            "arrondissement",
            "authority",
+           "autonomous",
            "bantustan",
            "barangays",
+           "base",
            "bezirk",
            "borough",
+           "burgh",
            "buurtschap",
            "canton",
            "capital",
            "cemetery",
+           "census",
+           "chapelry",
+           "circuit",
            "city",
            "civil",
+           "colony",
            "comarca",
+           "commonwealth",
            "commune",
            "community",
            "concelho",
            "constituency",
+           "council",
+           "country",
            "county",
+           "court",
+           "defunct",
            "departement",
            "department",
+           "dependency",
+           "dependent",
+           "deserted",
+           "designated",
            "diocese",
+           "disputed",
            "district",
            "division",
+           "dorf",
+           "dorp",
            "duchy",
+           "emirate",
+           "external",
+           "extra",
            "federal",
+           "fiefdom",
+           "former",
            "freguesia",
+           "gard",
            "gehucht",
            "gemeente",
+           "gemeinde",
+           "general",
            "gerichtsbezirk",
+           "ghost",
            "governorate",
            "grafschaft",
            "hameau",
+           "hamlet",
+           "historical",
            "hundred",
+           "island",
+           "islands",
+           "inhabited",
            "independent",
+           "indian",
            "kanton",
            "kerulet",
+           "kingdom",
            "kreis",
+           "land",
            "landkreis",
+           "liberty",
+           "lieutenance",
+           "local",
+           "locality",
+           "location",
            "marke",
            "metropolitan",
+           "military",
+           "mining",
+           "modern",
            "municipal",
            "municipality",
+           "nation",
            "national",
+           "neighborhood",
            "oblast",
+           "occupied",
            "okres",
+           "or",
+           "orthodox",
+           "ortsteil",
            "parish",
-           "partido ",
+           "parochial",
+           "partido",
            "perfecture",
            "periphery",
+           "place",
+           "political",
+           "populated",
            "powiat",
            "prefecture",
            "presbytery",
+           "preserved",
            "principal",
            "principality",
            "province",
            "provincie",
+           "quarter",
            "raion",
            "rayon",
            "regency",
            "regierungsbezirk",
            "region",
            "regional",
+           "registration",
+           "republic",
+           "reserve",
            "rione",
+           "rural",
            "sahar",
+           "seat",
+           "settlement",
+           "shire",
+           "special",
            "stad",
            "state",
            "statutarstadt",
            "stift",
            "subprefecture",
+           "suburb",
            "synod",
            "territory",
            "town",
            "townland",
            "township",
+           "traditional",
+           "tything",
+           "unincorporated",
+           "uninhabited",
+           "union",
            "unitary",
+           "unknown",
+           "urban",
            "uyezd",
            "village",
-           "voivodship"
+           "voormalige",
+           "voivodship",
+           "wapentake",
+           "ward",
+           "zone"
    ));
 
    // {{wikipedia-notice|wikipedia page name}}
@@ -362,12 +441,17 @@ public class ExtractPlaces extends StructuredDataParser
       return 0.0;
    }
 
-   private String getNameToken(String name) {
-      String[] tokens = Util.romanize(name.toLowerCase()).split("[^a-z0-9]+");
+   private Set<String> getNameTokens(String name) {
+      name = Util.romanize(name.toLowerCase());
+      String[] tokens = name.split("[^a-z0-9]+");
       StringBuilder buf = new StringBuilder();
-      String result = null;
+      Set<String> result = new TreeSet<String>();
+      int pos = name.indexOf('(');
+      if (pos > 0) {
+         result.add(name.substring(0, pos).replace(" ", ""));
+      }
       boolean foundNameWord = false;
-      for (int i = tokens.length-1; i >= 0; i--) {
+      for (int i = 0; i < tokens.length; i++) {
          String token = tokens[i];
          if (token.length() > 0) {
             // expand only if >1 word
@@ -377,28 +461,29 @@ public class ExtractPlaces extends StructuredDataParser
                   token = expansion;
                }
             }
-            if (!TYPE_WORDS.contains(token) && !NOISE_WORDS.contains(token)) {
-               // ignore type words and noise words after a name word
-               if (!foundNameWord && buf.length() > 0) {
-                  buf.setLength(0);
+            if (TYPE_WORDS.contains(token) || NOISE_WORDS.contains(token)) {
+               if (foundNameWord) {
+                  result.add(buf.toString()); // add what you've found so far
+                  foundNameWord = false;      // don't add prefix again
                }
-               foundNameWord= true;
             }
-            buf.insert(0,token);
+            else {
+               foundNameWord = true;
+               result.clear();                // if you find another name word, ignore anything added so far
+            }
+            // append to buffer
+            buf.append(token);
          }
       }
       if (buf.length() > 0) {
-         result = buf.toString();
+         result.add(buf.toString());
       }
-//      if (!foundNameWord) {
-//         logger.info("No name words found: "+name);
-//      }
       return result;
    }
 
-   private boolean addName(int id, String name, Map<String,Set<Integer>> map) {
-      String token = getNameToken(name);
-      if (token != null) {
+   private boolean addNames(int id, String name, Map<String,Set<Integer>> map) {
+      Set<String> tokens = getNameTokens(name);
+      for (String token : tokens) {
          Set<Integer> ids = map.get(token);
          if (ids == null) {
             ids = new TreeSet<Integer>();
@@ -406,7 +491,7 @@ public class ExtractPlaces extends StructuredDataParser
          }
          ids.add(id);
       }
-      return (token != null);
+      return (tokens.size() > 0);
    }
 
    public Map<String,Set<Integer>> generateWordMap() {
@@ -415,7 +500,7 @@ public class ExtractPlaces extends StructuredDataParser
       for (Map.Entry<Integer,Place> entry : placeMap.entrySet()) {
          int id = entry.getKey();
          Place p = entry.getValue();
-         if (!addName(id, p.name, map)) {
+         if (!addNames(id, p.name, map)) {
             logger.error("Primary name token not found for: " + p.name + ", " + p.locatedIn);
          }
          for (String altName : p.altNames) {
@@ -423,7 +508,7 @@ public class ExtractPlaces extends StructuredDataParser
             if (pos >= 0) {
                altName = altName.substring(0,pos);
             }
-            addName(id, altName, map);
+            addNames(id, altName, map);
          }
       }
       return map;
