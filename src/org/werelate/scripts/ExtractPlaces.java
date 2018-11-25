@@ -125,8 +125,6 @@ public class ExtractPlaces extends StructuredDataParser
            "hamlet",
            "historical",
            "hundred",
-           "island",
-           "islands",
            "inhabited",
            "independent",
            "indian",
