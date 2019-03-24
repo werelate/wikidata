@@ -30,7 +30,7 @@ public class MatchWPPeople
       try
       {
          String query = "PersonGivenname:\""+given+"\" PersonSurname:\""+surname+"\" PersonBirthDate:\""+birthDate+"\" PersonDeathDate:\""+deathDate+"\"";
-         String url = "http://index.werelate.org/solr/search";
+         String url = "https://index.werelate.org/solr/search";
          m = new GetMethod(url);
          NameValuePair[] nvp = new NameValuePair[5];
          nvp[0] = new NameValuePair("fl", "TitleStored,score");
@@ -115,8 +115,8 @@ public class MatchWPPeople
             deathDate = URLEncoder.encode(deathDate, "UTF-8");
             String htmlTitle = Util.encodeXML(fields[0]);
             PrintWriter out = (matchScore > MATCH_THRESHOLD ? outHigh : outLow);
-            out.println("<li><a href=\"http://www.werelate.org/wiki/Special:Search?ns=Person&g="+given+"&s="+surname+"&bd="+birthDate+"&dd="+deathDate+"\">search</a>"+
-                    " <a href=\"http://en.wikipedia.org/wiki/"+title+"\">wikipedia</a> {{source-wikipedia|"+htmlTitle+"}}</li>");
+            out.println("<li><a href=\"https://www.werelate.org/wiki/Special:Search?ns=Person&g="+given+"&s="+surname+"&bd="+birthDate+"&dd="+deathDate+"\">search</a>"+
+                    " <a href=\"https://en.wikipedia.org/wiki/"+title+"\">wikipedia</a> {{source-wikipedia|"+htmlTitle+"}}</li>");
             out.flush();
          }
          else {

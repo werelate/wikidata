@@ -56,7 +56,7 @@ public class PageEditor {
     * @param agentPassword
     */
    public PageEditor(String host, String agentPassword) {
-      this.baseUrl = "http://" + host;
+      this.baseUrl = "https://" + host;
       this.agentPassword = agentPassword;
       this.mockContents = null;
       this.title = null;
