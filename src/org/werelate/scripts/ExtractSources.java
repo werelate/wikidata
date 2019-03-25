@@ -21,11 +21,14 @@ import nu.xom.Elements;
 
 public class ExtractSources extends StructuredDataParser
 {
-
+    private Map<String,String> redirectMap;
+    private Map<String,Integer> linkedSourcesMap;
     PrintWriter out;
 
     public ExtractSources(PrintWriter out) {
         this.out = out;
+        redirectMap = new HashMap<String,String>();
+        linkedSourcesMap = new HashMap<String, Integer>();
     }
 
     public void close() {
@@ -103,10 +106,17 @@ public class ExtractSources extends StructuredDataParser
 
    public void parse(String title, String text, int pageId, int latestRevId, String username, String timestamp, String comment) throws IOException, ParsingException
    {
+      Matcher m = Util.REDIRECT_PATTERN.matcher(text.trim());
       if (title.startsWith("Source:")) {
          title = title.substring("Source:".length());
-         Matcher m = Util.REDIRECT_PATTERN.matcher(text.trim());
-         if (!m.lookingAt()) {
+         if (m.lookingAt()) {
+             String target = Util.cleanRedirTarget(m.group(1));
+             if (target.startsWith("Source:")) {
+                target = target.substring("Source:".length()).trim();
+                redirectMap.put(title, target);
+             }
+         }
+         else {
             String[] split = splitStructuredWikiText("source", text);
             String structuredData = split[0];
             if (!Util.isEmpty(structuredData)) {
@@ -142,21 +152,82 @@ public class ExtractSources extends StructuredDataParser
             }
          }
       }
+      else if (title.startsWith("Person:") || title.startsWith("Family:")) {
+         if (!m.lookingAt()) {
+            String[] split = splitStructuredWikiText(title.startsWith("Person:") ? "person" : "family", text);
+            String structuredData = split[0];
+            if (!Util.isEmpty(structuredData)) {
+               Element root = parseText(structuredData).getRootElement();
+               Elements eventFacts = root.getChildElements("source_citation");
+               for (int i = 0; i < eventFacts.size(); i++) {
+                  Element eventFact = eventFacts.get(i);
+                  String source = eventFact.getAttributeValue("title");
+                  if (source != null && source.startsWith("Source:")) {
+                     source = source.substring("Source:".length()).trim();
+                     int pos = source.indexOf('|');
+                     if (pos >= 0) {
+                        source = source.substring(0, pos);
+                     }
+                     if (source.length() > 0) {
+                       if (linkedSourcesMap.containsKey(source)) {
+                          linkedSourcesMap.put(source, linkedSourcesMap.get(source) + 1);
+                       } else {
+                          linkedSourcesMap.put(source, 1);
+                       }
+                     }
+                  }
+               }
+            }
+         }
+      }
    }
 
+    private String getFinalRedirectTarget(String title, int max) {
+       int i = 0;
+       while (redirectMap.containsKey(title)) {
+          // avoid infinite redirect loops
+          if (++i > max) {
+             return null;
+          }
+          title = redirectMap.get(title);
+       }
+       return title;
+    }
+
+
+    private void addCountsToRedirectTargets() {
+       for (String title : redirectMap.keySet()) {
+          String target = getFinalRedirectTarget(title, 10);
+          if (target != null) {
+             Integer count = linkedSourcesMap.containsKey(title) ? linkedSourcesMap.get(title) : 0;
+             linkedSourcesMap.put(target, (linkedSourcesMap.containsKey(target) ? linkedSourcesMap.get(target) : 0) + count);
+          }
+       }
+    }
 
    // Generate list of sources
-   // args array: 0=pages.xml 1=sources.tsv
+   // args array: 0=pages.xml 1=sources.tsv 2=source_counts.tsv
    public static void main(String[] args)
            throws IOException, ParsingException
    {
       WikiReader wikiReader = new WikiReader();
       wikiReader.setSkipRedirects(true);
-      ExtractSources self = new ExtractSources(new PrintWriter(args[1]));
+      // write sources.tsv
+      PrintWriter pw = new PrintWriter(args[1], "UTF-8");
+      ExtractSources self = new ExtractSources(pw);
       wikiReader.addWikiPageParser(self);
       InputStream in = new FileInputStream(args[0]);
       wikiReader.read(in);
       in.close();
       self.close();
+
+      // write source_counts.tsv
+      self.addCountsToRedirectTargets();
+      pw = new PrintWriter(args[2], "UTF-8");
+      for (String source : self.linkedSourcesMap.keySet()) {
+          int count = self.linkedSourcesMap.get(source);
+          pw.printf("%s\t%d\n", source, count);
+      }
+      pw.close();
    }
 }
