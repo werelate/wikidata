@@ -200,7 +200,7 @@ public class PlaceVerifier extends StructuredDataParser{
       String fhlcPlaceName;
       String fhlcPlaceId;
       String wikiPlaceName = "";
-      String urlLink = "<a href=\"http://www.werelate.org/wiki/";
+      String urlLink = "<a href=\"https://www.werelate.org/wiki/";
       Matcher startTagMatcher = SourceUtil.START.matcher(currentPage);
       Matcher fhlcPlacesMatcher = PLACE.matcher(currentPage);
       if(!startTagMatcher.find()){

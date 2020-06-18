@@ -180,7 +180,7 @@ public class ListDuplicateSourceTitles
 
       pwHtml.println(newTitle+"<ul>");
       for (TitleData td : tdl) {
-         pwHtml.println("<li><a href=\"http://www.werelate.org/wiki/Source:"+Util.wikiUrlEncoder(td.pageTitle)+"\">"+Util.encodeXML(td.pageTitle)+"</a>");
+         pwHtml.println("<li><a href=\"https://www.werelate.org/wiki/Source:"+Util.wikiUrlEncoder(td.pageTitle)+"\">"+Util.encodeXML(td.pageTitle)+"</a>");
          buf.append("|");
          buf.append(td.pageTitle);
       }
@@ -211,8 +211,8 @@ public class ListDuplicateSourceTitles
                dups+= tdl.size();
             }
             else if (!newTitle.equals(td0.pageTitle) && oldTitles.contains(newTitle)) {
-               existsHtml.println("<li><a href=\"http://www.werelate.org/wiki/Source:"+Util.wikiUrlEncoder(td0.pageTitle)+"\">"+Util.encodeXML(td0.pageTitle)+"</a>");
-               existsHtml.println("<br><a href=\"http://www.werelate.org/wiki/Source:"+Util.wikiUrlEncoder(newTitle)+"\">"+Util.encodeXML(newTitle)+"</a>");
+               existsHtml.println("<li><a href=\"https://www.werelate.org/wiki/Source:"+Util.wikiUrlEncoder(td0.pageTitle)+"\">"+Util.encodeXML(td0.pageTitle)+"</a>");
+               existsHtml.println("<br><a href=\"https://www.werelate.org/wiki/Source:"+Util.wikiUrlEncoder(newTitle)+"\">"+Util.encodeXML(newTitle)+"</a>");
                existsTxt.println(td0.pageTitle+"|"+newTitle);
             }
             else if (!newTitle.equals(td0.pageTitle)) {

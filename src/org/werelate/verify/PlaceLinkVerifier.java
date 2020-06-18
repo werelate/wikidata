@@ -46,7 +46,7 @@ public class PlaceLinkVerifier extends StructuredDataParser {
    private String formatLink(String title) {
       try
       {
-         return "<a href=\"http://www.werelate.org/wiki/Place:"+URLEncoder.encode(title, "UTF-8")+"\">"+Util.encodeXML(title)+"</a>";
+         return "<a href=\"https://www.werelate.org/wiki/Place:"+URLEncoder.encode(title, "UTF-8")+"\">"+Util.encodeXML(title)+"</a>";
       } catch (UnsupportedEncodingException e)
       {
          throw new RuntimeException(e.getMessage());

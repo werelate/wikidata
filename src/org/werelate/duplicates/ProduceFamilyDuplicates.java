@@ -370,12 +370,12 @@ public class ProduceFamilyDuplicates extends StructuredDataParser
          if (titles.size() > 10) {
             out.print("<li>Too many to merge at once: ");
             for (String title : titles) {
-               out.print(" <a href=\"http://www.werelate.org/wiki/"+namespace+":"+URLEncoder.encode(title, "UTF-8")+"\">"+Util.encodeXML(namespace+":"+title)+"</a>");
+               out.print(" <a href=\"https://www.werelate.org/wiki/"+namespace+":"+URLEncoder.encode(title, "UTF-8")+"\">"+Util.encodeXML(namespace+":"+title)+"</a>");
             }
             out.println("</li>");
          }
          else if (titles.size() > 1) {
-            out.print("<li><a href=\"http://www.werelate.org/wiki/Special:Compare?ns="+namespace);
+            out.print("<li><a href=\"https://www.werelate.org/wiki/Special:Compare?ns="+namespace);
             StringBuilder buf = new StringBuilder();
             for (int i = 0; i < titles.size(); i++) {
                String title = titles.get(i);

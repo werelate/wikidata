@@ -152,7 +152,7 @@ public class ProduceCountryFiles {
       }
       out.println("<ul>");
       for (Place p : sortedPlaces) {
-         String url = "http://www.werelate.org/wiki/Place:" + p.getTitle();
+         String url = "https://www.werelate.org/wiki/Place:" + p.getTitle();
          out.print("<li><a href=\"" + url + "\">" + p.getTitle() + "</a>");
          out.println(" [" + p.getType() + "]</li>");
       }
@@ -175,7 +175,7 @@ public class ProduceCountryFiles {
       for (Place p : sortedPlaces)
       {
          //System.out.println("Printing out a sorted place");
-         String url = "http://www.werelate.org/wiki/Place:" + p.getTitle();
+         String url = "https://www.werelate.org/wiki/Place:" + p.getTitle();
          out.print(tabs(insideLevel) + "<li><a href=\"" + url + "\">" + p.getTitle() + "</a>");
          out.print(" [" + p.getType() + "]");
          if (p.getContainedPlaces().size() > 0)

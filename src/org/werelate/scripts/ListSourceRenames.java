@@ -82,7 +82,7 @@ public class ListSourceRenames
 
          if (!newTitle.equals(oldTitle)) {
             double r = Math.random();
-            String lineOut = "<a href=\"http://www.werelate.org/wiki/Source:"+Util.wikiUrlEncoder(oldTitle)+"\">"+Util.encodeXML(oldTitle)+"</a><br>"+
+            String lineOut = "<a href=\"https://www.werelate.org/wiki/Source:"+Util.wikiUrlEncoder(oldTitle)+"\">"+Util.encodeXML(oldTitle)+"</a><br>"+
                         "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"+newTitle+"<br>";
             if (isHuman) {
                PrintWriter pw = userOut.get(username);

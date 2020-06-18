@@ -20,7 +20,7 @@ public class OnlineSourceWorkpageGenerator
    private static String getListItem(String line) throws UnsupportedEncodingException
    {
       String[] pieces = line.split("\\|");
-      return "<li><a href=\""+pieces[0]+"\">"+pieces[0]+"</a> &nbsp; <a href=\"http://www.werelate.org/w/index.php?title="+URLEncoder.encode(pieces[1],"UTF-8")+"&action=edit\">"+pieces[1]+"</a></li>";
+      return "<li><a href=\""+pieces[0]+"\">"+pieces[0]+"</a> &nbsp; <a href=\"https://www.werelate.org/w/index.php?title="+URLEncoder.encode(pieces[1],"UTF-8")+"&action=edit\">"+pieces[1]+"</a></li>";
    }
 
    public static void main(String[] args)

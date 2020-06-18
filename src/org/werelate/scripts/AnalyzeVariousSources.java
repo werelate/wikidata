@@ -110,7 +110,7 @@ public class AnalyzeVariousSources extends StructuredDataParser
    }
 
    private String makeLink(String unprefixedTitle) {
-      return "<li><a href=\"http://www.werelate.org/wiki/Source:"+Util.wikiUrlEncoder(unprefixedTitle)+"\">"+Util.encodeXML(unprefixedTitle)+"</a>";
+      return "<li><a href=\"https://www.werelate.org/wiki/Source:"+Util.wikiUrlEncoder(unprefixedTitle)+"\">"+Util.encodeXML(unprefixedTitle)+"</a>";
    }
 
    public void parse(String title, String text, int pageId, int latestRevId, String username, String timestamp, String comment) throws IOException, ParsingException

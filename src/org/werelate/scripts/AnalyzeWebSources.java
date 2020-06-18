@@ -86,7 +86,7 @@ public class AnalyzeWebSources extends StructuredDataParser
                   miscOut.println(title);
                }
                else {
-                  nonMiscOut.println("<li><a href=\"http://www.werelate.org/wiki/"+URLEncoder.encode(title,"UTF-8")+"\">"+Util.encodeXML(unprefixedTitle)+"</a>");
+                  nonMiscOut.println("<li><a href=\"https://www.werelate.org/wiki/"+URLEncoder.encode(title,"UTF-8")+"\">"+Util.encodeXML(unprefixedTitle)+"</a>");
                }
             }
          }

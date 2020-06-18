@@ -30,8 +30,8 @@ public class ListExistingRenameTargets extends StructuredDataParser
          String line = in.readLine();
          String[] fields = line.split("\\|");
          if (targetSource.get(fields[1]) != null) {
-            existingOut.println("<li><a href=\"http://www.werelate.org/wiki/"+Util.wikiUrlEncoder(fields[0])+"\">"+Util.encodeXML(fields[0])+"</a>");
-            existingOut.println("<br><a href=\"http://www.werelate.org/wiki/"+Util.wikiUrlEncoder(fields[1])+"\">"+Util.encodeXML(fields[1])+"</a>");
+            existingOut.println("<li><a href=\"https://www.werelate.org/wiki/"+Util.wikiUrlEncoder(fields[0])+"\">"+Util.encodeXML(fields[0])+"</a>");
+            existingOut.println("<br><a href=\"https://www.werelate.org/wiki/"+Util.wikiUrlEncoder(fields[1])+"\">"+Util.encodeXML(fields[1])+"</a>");
          }
          else {
             targetSource.put(fields[1],fields[0]);
@@ -48,8 +48,8 @@ public class ListExistingRenameTargets extends StructuredDataParser
    {
       if (targetSource.containsKey(title)) {
          String origTitle = targetSource.get(title);
-         existingOut.println("<li><a href=\"http://www.werelate.org/wiki/"+Util.wikiUrlEncoder(origTitle)+"\">"+Util.encodeXML(origTitle)+"</a>");
-         existingOut.println("<br><a href=\"http://www.werelate.org/wiki/"+Util.wikiUrlEncoder(title)+"\">"+Util.encodeXML(title)+"</a>");
+         existingOut.println("<li><a href=\"https://www.werelate.org/wiki/"+Util.wikiUrlEncoder(origTitle)+"\">"+Util.encodeXML(origTitle)+"</a>");
+         existingOut.println("<br><a href=\"https://www.werelate.org/wiki/"+Util.wikiUrlEncoder(title)+"\">"+Util.encodeXML(title)+"</a>");
          targetSource.remove(title);
       }
    }

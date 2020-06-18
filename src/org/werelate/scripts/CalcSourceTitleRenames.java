@@ -204,7 +204,7 @@ public class CalcSourceTitleRenames extends StructuredDataParser
 
    private void printError(String msg, String title) throws UnsupportedEncodingException
    {
-      err.println("<li>"+msg+" <a href=\"http://www.werelate.org/wiki/"+URLEncoder.encode(title,"UTF-8")+"\">"+Util.encodeXML(title)+"</a>");
+      err.println("<li>"+msg+" <a href=\"https://www.werelate.org/wiki/"+URLEncoder.encode(title,"UTF-8")+"\">"+Util.encodeXML(title)+"</a>");
    }
 
    public void parse(String title, String text, int pageId, int latestRevId, String username, String timestamp, String comment) throws IOException, ParsingException

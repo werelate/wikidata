@@ -39,7 +39,7 @@ public class AnalyzeAncestrySources extends StructuredDataParser
             if (placeElm != null) place = placeElm.getValue();
 
             if (author.equals("Ancestry.com")) {
-               sourcesOut.println("<li><a href=\"http://www.werelate.org/wiki/"+URLEncoder.encode(title,"UTF-8")+"\">"+Util.encodeXML(title)+"</a>");
+               sourcesOut.println("<li><a href=\"https://www.werelate.org/wiki/"+URLEncoder.encode(title,"UTF-8")+"\">"+Util.encodeXML(title)+"</a>");
             }
          }
       }

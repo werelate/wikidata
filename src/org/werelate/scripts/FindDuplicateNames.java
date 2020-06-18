@@ -29,7 +29,7 @@ public class FindDuplicateNames extends StructuredDataParser
             Element root = parseText(structuredData).getRootElement();
             Elements names = root.getChildElements("name");
             if (names.size() > 1) {
-               out.println("<li><a href=\"http://www.werelate.org/wiki/"+URLEncoder.encode(title,"UTF-8")+"?action=edit\">"+Util.encodeXML(title)+"</a>");
+               out.println("<li><a href=\"https://www.werelate.org/wiki/"+URLEncoder.encode(title,"UTF-8")+"?action=edit\">"+Util.encodeXML(title)+"</a>");
             }
          }
       }

@@ -61,7 +61,7 @@ public class PersonLinkVerifier extends StructuredDataParser {
    private String formatLink(String namespace, String title) {
       try
       {
-         return "<a href=\"http://www.werelate.org/wiki/"+namespace+":"+URLEncoder.encode(title, "UTF-8")+"\">"+Util.encodeXML(namespace+":"+title)+"</a>";
+         return "<a href=\"https://www.werelate.org/wiki/"+namespace+":"+URLEncoder.encode(title, "UTF-8")+"\">"+Util.encodeXML(namespace+":"+title)+"</a>";
       } catch (UnsupportedEncodingException e)
       {
          throw new RuntimeException(e.getMessage());
