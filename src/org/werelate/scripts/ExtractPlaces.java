@@ -257,13 +257,13 @@ public class ExtractPlaces extends StructuredDataParser
       linkedPlacesMap = new HashMap<String, Integer>();
    }
 
-   private static String noTilde(String place) {
-      return place.replace("~"," ");
+   private static String noQuote(String place) {
+      return place.replace("\"","");
    }
 
-   private static String noColon(String place) {
-      return place.replace(":"," ");
-   }
+//   private static String noColon(String place) {
+//      return place.replace(":"," ");
+//   }
 
    private static String noLink(String source) {
       if (source.startsWith("[[") && source.endsWith("]]")) {
@@ -333,17 +333,17 @@ public class ExtractPlaces extends StructuredDataParser
                   String name = elm.getAttributeValue("name");
                   String source = elm.getAttributeValue("source");
                   if (name != null && name.length() > 0) {
-                     if (source != null && source.length() > 0) {
-                        name = noColon(name)+":"+noLink(source);
-                     }
-                     p.altNames.add(noTilde(name));
+//                     if (source != null && source.length() > 0) {
+//                        name = noColon(name)+":"+noLink(source);
+//                     }
+                     p.altNames.add(noQuote(name));
                   }
                }
 
                // add altNames for danish oe
                String n = p.name.replace("Ø", "O").replace("ø", "o");
                if (!n.equals(p.name)) {
-                  p.altNames.add(noTilde(n));
+                  p.altNames.add(noQuote(n));
                }
 
                // set types
@@ -354,7 +354,7 @@ public class ExtractPlaces extends StructuredDataParser
                      for (String type : types.split(",")) {
                         type = type.trim();
                         if (type.length() > 0) {
-                           p.types.add(noTilde(type));
+                           p.types.add(noQuote(type));
                         }
                      }
                   }
@@ -502,10 +502,10 @@ public class ExtractPlaces extends StructuredDataParser
             logger.error("Primary name token not found for: " + p.name + ", " + p.locatedIn);
          }
          for (String altName : p.altNames) {
-            int pos = altName.indexOf(':');
-            if (pos >= 0) {
-               altName = altName.substring(0,pos);
-            }
+//            int pos = altName.indexOf(':');
+//            if (pos >= 0) {
+//               altName = altName.substring(0,pos);
+//            }
             addNames(id, altName, map);
          }
       }
@@ -651,14 +651,14 @@ public class ExtractPlaces extends StructuredDataParser
       for (Map.Entry<String,Set<Integer>> entry : wordMap.entrySet()) {
          String word = entry.getKey();
          Set<Integer> ids = entry.getValue();
-         if (ids.size() > 400) {
+         if (ids.size() > 1000) {
             logger.warn("large id list: " + word + "=" + ids.size());
          }
-         String idsString = Util.join(",",ids);
+         String idsString = "["+Util.join(",",ids)+"]";
          if (word.length() > 191) {
             logger.error("word too long: "+ word);
          }
-         else if (idsString.length() > 8192) {
+         else if (idsString.length() > 16384) {
             logger.error("Ids too long: " + word);
          }
          else {
@@ -695,21 +695,24 @@ public class ExtractPlaces extends StructuredDataParser
             }
          }
 
-         String altNames = Util.join("~", p.altNames);
-         if (altNames.length() > 4096) {
+         String altNames = Util.join(",", p.altNames, "\"");
+         if (altNames.length() > 16384) {
             logger.error("Alt names too long: " + altNames + "=" + altNames.length());
             altNames = "";
          }
 
          int countryId = placeId;
          int level = 1;
+         String fullName = p.name;
          int parentId = locatedInId;
          while (parentId > 0) {
             countryId = parentId;
             level++;
+            Place parent = placeMap.get(parentId);
+            fullName += ", " + parent.name;
             parentId = self.getPlaceId(placeMap.get(parentId).locatedIn);
             if (parentId < 0) {
-               logger.error("Bad country for: " + placeId);
+               logger.error("Bad hierarchy for: " + placeId);
             }
          }
 
@@ -735,15 +738,16 @@ public class ExtractPlaces extends StructuredDataParser
          StringBuilder buf = new StringBuilder();
          buf.append(placeId);
          append(buf, noTab(p.name));
-         append(buf, noTab(altNames));
-         append(buf, noTab(Util.join("~", p.types)));
+         append(buf, noTab(fullName));
+         append(buf, "["+noTab(altNames)+"]");
+         append(buf, "["+noTab(Util.join(",", p.types, "\""))+"]");
          append(buf, Integer.toString(locatedInId));
-         append(buf, Util.join("~", aliIds));
+         append(buf, "["+Util.join(",", aliIds)+"]");
          append(buf, Integer.toString(level));
          append(buf, Integer.toString(countryId));
          append(buf, nf.format(latitude));
          append(buf, nf.format(longitude));
-         append(buf, noTab(Util.join("~", p.sources)));
+         //append(buf, noTab(Util.join("~", p.sources)));
          append(buf, Integer.toString(count));
          out.println(buf.toString());
       }

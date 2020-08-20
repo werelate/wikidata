@@ -366,15 +366,19 @@ public class Util
       return result;
    }
 
-   public static String join(String glue, Collection<? extends Object> c) {
+   public static String join(String glue, Collection<? extends Object> c, String encloseString) {
       StringBuilder buf = new StringBuilder();
       for (Object o : c) {
          if (buf.length() > 0) {
             buf.append(glue);
          }
-         buf.append(o.toString());
+         buf.append(encloseString+o.toString()+encloseString);
       }
       return buf.toString();
+   }
+
+   public static String join(String glue, Collection<? extends Object> c) {
+      return join(glue, c, "");
    }
 
    public static String prepareWikiTitle(String title) {
