@@ -48,7 +48,7 @@ public class GenerateSitemap extends StructuredDataParser {
          try {
             Element url = new Element("url", XMLNS);
             Element loc = new Element("loc", XMLNS);
-            URI uri = new URI("http", WERELATE_ORG, PATH_PREFIX + title.replace(' ','_'), null);
+            URI uri = new URI("https", WERELATE_ORG, PATH_PREFIX + title.replace(' ','_'), null);
             loc.appendChild(uri.toASCIIString());
             url.appendChild(loc);
             Element lastmod = new Element("lastmod", XMLNS);
@@ -107,7 +107,7 @@ public class GenerateSitemap extends StructuredDataParser {
          try {
             Element sitemap = new Element("sitemap", XMLNS);
             Element loc = new Element("loc", XMLNS);
-            URI uri = new URI("http", WERELATE_ORG, SITEMAP_PREFIX+"map"+i+".xml.gz", null);
+            URI uri = new URI("https", WERELATE_ORG, SITEMAP_PREFIX+"map"+i+".xml.gz", null);
             loc.appendChild(uri.toASCIIString());
             sitemap.appendChild(loc);
             Element lastmod = new Element("lastmod", XMLNS);
