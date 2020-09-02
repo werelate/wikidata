@@ -57,3 +57,8 @@ mysqlimport -h <host> -u<user> -p<password> --default-character-set=utf8mb4 --fi
 ```
 wikidata/shell/run.sh org.werelate.scripts.ExtractSources pages.xml sources.tsv source_counts.tsv
 ```
+
+## Names
+
+* mysql ... -e 'select * from givenname_similar_names' > givenname_similar_names.werelate.tsv
+* mysql ... -e 'select * from surname_similar_names' > surname_similar_names.werelate.tsv
