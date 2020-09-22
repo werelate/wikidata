@@ -534,9 +534,9 @@ public class ExtractPlaces extends StructuredDataParser
       return placeMap;
    }
 
-   private static String noTab(String s) {
+   private static String clean(String s) {
       if (s == null) return "";
-      return s.replace("\t", " ");
+      return s.replace("\t", " ").replace("\\", "");
    }
 
    private static void append(StringBuilder buf, String s) {
@@ -737,17 +737,17 @@ public class ExtractPlaces extends StructuredDataParser
 
          StringBuilder buf = new StringBuilder();
          buf.append(placeId);
-         append(buf, noTab(p.name));
-         append(buf, noTab(fullName));
-         append(buf, "["+noTab(altNames)+"]");
-         append(buf, "["+noTab(Util.join(",", p.types, "\""))+"]");
+         append(buf, clean(p.name));
+         append(buf, clean(fullName));
+         append(buf, "["+clean(altNames)+"]");
+         append(buf, "["+clean(Util.join(",", p.types, "\""))+"]");
          append(buf, Integer.toString(locatedInId));
          append(buf, "["+Util.join(",", aliIds)+"]");
          append(buf, Integer.toString(level));
          append(buf, Integer.toString(countryId));
          append(buf, nf.format(latitude));
          append(buf, nf.format(longitude));
-         //append(buf, noTab(Util.join("~", p.sources)));
+         //append(buf, clean(Util.join("~", p.sources)));
          append(buf, Integer.toString(count));
          out.println(buf.toString());
       }
