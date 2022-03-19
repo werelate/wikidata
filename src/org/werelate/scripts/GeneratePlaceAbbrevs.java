@@ -30,7 +30,7 @@ public class GeneratePlaceAbbrevs {
       String id;
       String name;
       List<String> altNames;
-      Set<String> types;
+      List<String> types;                          // changed from Set to List (Feb 2022 by Janet Bjorndahl)
       String locatedInId;
       Set<String> alsoLocatedInIds;
       double lat;
@@ -41,35 +41,34 @@ public class GeneratePlaceAbbrevs {
       String[] fields = line.split("\t");
       Place p = new Place();
       p.id = fields[0];
-      p.name = fields[1];
-      p.altNames = new ArrayList<String>();
-      if (fields[2].length() > 0) {
-         for (String altNameSource : fields[2].split("~")) {
-            String altName = altNameSource.split(":")[0].trim();
-            p.altNames.add(altName);
+      p.name = fields[1];                          
+      p.altNames = new ArrayList<String>();        // All array indexes after this bumped by 1 (Feb 2022 by Janet Bjorndahl)
+      if (fields[3].length() > 2) {                // This and next line changed to exclude encompassing [] (Feb 2022 by Janet Bjorndahl)
+         for (String altName : fields[3].substring(1,fields[3].length()-1).split("\",\"")) {   // exclude quotes around commas (Feb 2022 by Janet Bjorndahl)
+            p.altNames.add(altName.replace("\"",""));    // Exclude first and last quotes (Feb 2022 by Janet Bjorndahl)
          }
       }
-      if (fields[3].length() > 0) {
-         p.types = new HashSet<String>(Arrays.asList(fields[3].split("~")));
+      p.types = new ArrayList<String>();
+      if (fields[4].length() > 2) {                // This and next line changed to exclude encompassing [] (Feb 2022 by Janet Bjorndahl)
+         for (String type : fields[4].substring(1,fields[4].length()-1).split("\",\"")) {   // exclude quotes around commas (Feb 2022 by Janet Bjorndahl)
+            p.types.add(type.replace("\"",""));    // Exclude first and last quotes (Feb 2022 by Janet Bjorndahl)
+         }
       }
-      else {
-         p.types = new HashSet<String>();
-      }
-      p.locatedInId = fields[4];
-      if (fields[5].length() > 0) {
-         p.alsoLocatedInIds = new HashSet<String>(Arrays.asList(fields[5].split("~")));
+      p.locatedInId = fields[5];
+      if (fields[6].length() > 2) {                // This and next line changed to exclude encompassing [] (Feb 2022 by Janet Bjorndahl)
+         p.alsoLocatedInIds = new HashSet<String>(Arrays.asList(fields[6].substring(1,fields[6].length()-1).split(",")));
       }
       else {
          p.alsoLocatedInIds = new HashSet<String>();
       }
-      if (fields.length > 8 && fields[8].length() > 0) {
-         p.lat = Double.parseDouble(fields[8]);
+      if (fields.length > 9 && fields[9].length() > 0) {
+         p.lat = Double.parseDouble(fields[9]);
       }
       else {
          p.lat = 0.0;
       }
-      if (fields.length > 9 && fields[9].length() > 0) {
-         p.lon = Double.parseDouble(fields[9]);
+      if (fields.length > 10 && fields[10].length() > 0) {
+         p.lon = Double.parseDouble(fields[10]);
       }
       else {
          p.lon = 0.0;
@@ -105,12 +104,11 @@ public class GeneratePlaceAbbrevs {
       }
 
       if ("0".equals(placeId)) {
-         results.add(new Ancestor(new ArrayList<String>(), priority + recursion * LEVEL_PRIORITY));
+         results.add(new Ancestor(new ArrayList<String>(), priority + (recursion-1) * LEVEL_PRIORITY));  // changed to recursion-1 to match Place.php Feb 2022 JB
          return results;
       }
 
       Place p = placeMap.get(placeId);
-
       // is this place linked-to from anyone in WeRelate?
       int unlinkedPriority = linkedPlaces.contains(getTitle(placeMap, p)) ? 0 : UNLINKED_PRIORITY;
 
@@ -174,9 +172,9 @@ public class GeneratePlaceAbbrevs {
    }
 
    private static HashSet<String> seenAbbrevTitles = new HashSet<String>();
-   private static int id = 1;
+   //   private static int id = 1;                     // commented out Feb 2022 by Janet Bjorndahl
 
-   public static void write(PrintWriter out, String abbrev, String name, String primaryName, String title, int priority, double lat, double lon) {
+   public static void write(PrintWriter out, String abbrev, String name, String primaryName, String title, int priority, double lat, double lon, String types) {
       // track so we avoid duplicates
       if (seenAbbrevTitles.contains(abbrev+"|"+title)) {
          return;
@@ -186,20 +184,25 @@ public class GeneratePlaceAbbrevs {
          logger.error("abbrev too long: "+ abbrev);
          return;
       }
+      if (types.length() > 191) {                      // added Feb 2022 by Janet Bjorndahl
+         logger.error("types too long: "+ types);
+         return;
+      }
       NumberFormat nf = DecimalFormat.getInstance();
       nf.setMaximumIntegerDigits(3);
       nf.setMinimumIntegerDigits(1);
       nf.setMaximumFractionDigits(6);
       nf.setMinimumFractionDigits(1);
 
-      out.printf("%d\t%s\t%s\t%s\t%s\t%s\t%s\t%d\n", id++, abbrev, name, primaryName, title, nf.format(lat), nf.format(lon), priority);
+      // following statement changed Feb 2022 to match table structure (id removed, priority moved earlier, types added) Janet Bjorndahl
+      out.printf("%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s\n", abbrev, name, primaryName, title, priority, nf.format(lat), nf.format(lon), types);
    }
 
-   public static void writeAbbrevs(PrintWriter out, String name, String primaryName, List<String> path, String title, int priority, double lat, double lon) {
+   public static void writeAbbrevs(PrintWriter out, String name, String primaryName, List<String> path, String title, int priority, double lat, double lon, String types) {
       title = title.replace(' ', '_');
 
       if (path.size() == 0) {
-         write(out, cleanAbbrev(name), clean(name), clean(primaryName), title, priority, lat, lon);
+         write(out, cleanAbbrev(name), clean(name), clean(primaryName), title, priority, lat, lon, types);  // types added Feb 2022 JB
          return;
       }
 
@@ -210,10 +213,10 @@ public class GeneratePlaceAbbrevs {
       for (int i = 0; i < path.size(); i++) {
          suffix = ", " + Util.join(", ", path.subList(i, path.size()));
          String abbrev = cleanAbbrev(name + suffix);
-         write(out, abbrev, fullName, primaryFullName, title, priority, lat, lon);
+         write(out, abbrev, fullName, primaryFullName, title, priority, lat, lon, types);       // types added Feb 2022 JB
          if (name.indexOf('(') > 0) {
             abbrev = cleanAbbrev(name.substring(0, name.indexOf('(')) + suffix);
-            write(out, abbrev, fullName, primaryFullName, title, priority, lat, lon);
+            write(out, abbrev, fullName, primaryFullName, title, priority, lat, lon, types);    // types added Feb 2022 JB
          }
       }
    }
@@ -251,6 +254,7 @@ public class GeneratePlaceAbbrevs {
       for (String id : placeMap.keySet()) {
          Place p = placeMap.get(id);
          String title = getTitle(placeMap, p);
+         String types = Util.join(", ", p.types);    // added Feb 2022 by Janet Bjorndahl
 
 //         if (!"173773".equals(id)) {
 //            continue;
@@ -273,13 +277,13 @@ public class GeneratePlaceAbbrevs {
          for (Ancestor ancestor : ancestors) {
             // write primary name
             namePriority = countChars(p.name, ' ') * NAMEWORD_PRIORITY;
-            writeAbbrevs(out, p.name, p.name, ancestor.path, title, namePriority + ancestor.priority, p.lat, p.lon);
+            writeAbbrevs(out, p.name, p.name, ancestor.path, title, namePriority + ancestor.priority, p.lat, p.lon, types);  // types added Feb 2022 by Janet Bjorndahl
             // write alt names
             for (String altName : p.altNames) {
-               if (altName.length() > 0 && // ignore empty alt names
-                   !altName.equals(altName.toUpperCase())) { // ignore abbrevs
+               if (altName.length() > 0) { // ignore empty alt names
+//                   !altName.equals(altName.toUpperCase())) { // commented out to include abbrevs to match Place.php (Feb 2022 JB)
                   namePriority = countChars(altName, ' ') * NAMEWORD_PRIORITY;
-                  writeAbbrevs(out, altName, p.name, ancestor.path, title, namePriority + ALT_PRIORITY + ancestor.priority, p.lat, p.lon);
+                  writeAbbrevs(out, altName, p.name, ancestor.path, title, namePriority + ALT_PRIORITY + ancestor.priority, p.lat, p.lon, types);  // types added Feb 2022 JB
                }
             }
          }
