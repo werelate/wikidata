@@ -19,24 +19,6 @@ wikidata/shell/run.sh org.werelate.scripts.ExtractPlaces pages.xml place_words.t
 ```
 
 ### Generate and load place abbreviations
-
-* place_abbrevs table
-
-```
-CREATE TABLE `place_abbrevs` (
-  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `abbrev` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `primary_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `latitude` decimal(9,6) NOT NULL DEFAULT '0.000000',
-  `longitude` decimal(9,6) NOT NULL DEFAULT '0.000000',
-  `priority` int(10) unsigned NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `abbrev` (`abbrev`,`priority`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-```
-
 * Generate place_abbrevs from places and place_links
 * upload place_abbrevs
 
