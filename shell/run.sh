@@ -7,6 +7,7 @@ java -Xmx1024m \
 -Djdk.xml.totalEntitySizeLimit=2147480000 \
 -classpath \
 ../classes:\
+../../werelate-gedcom/classes:\
 ../conf:\
 ../lib/log4j-1.3alpha-7.jar:\
 ../lib/xom-1.1b5.jar:\
