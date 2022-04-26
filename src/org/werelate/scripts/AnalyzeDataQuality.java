@@ -1200,10 +1200,10 @@ public class AnalyzeDataQuality extends StructuredDataParser {
       }
    }
 
-   private void openSqlConnection(String userName, String password) {
+   private void openSqlConnection(String dbHost, String userName, String password) {
       try {
          Class.forName("com.mysql.jdbc.Driver").newInstance();
-         sqlCon = DriverManager.getConnection("jdbc:mysql://localhost/wikidb", userName, password);
+         sqlCon = DriverManager.getConnection("jdbc:mysql://" + dbHost + "/wikidb", userName, password);
          sqlCon.setAutoCommit(false);
       } catch (Exception e) {
          e.printStackTrace();
@@ -1250,7 +1250,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
    }
 
    // Analyze pages, determine earliest and latest birth year if missing and report errors and anomalies
-   // args array: 0=pages.xml 1=username 2=password 3=startround 4=endround
+   // args array: 0=pages.xml 1=databasehost 2=username 3=password 4=startround 5=endround
    public static void main(String[] args)
            throws IOException, ParsingException
    {
@@ -1259,18 +1259,18 @@ public class AnalyzeDataQuality extends StructuredDataParser {
       AnalyzeDataQuality self = new AnalyzeDataQuality();
       // By default, go from round 1 to round 4, but user can override (for restartability or extension)
       round = 1;
-      if (args.length > 3) {
-         round = Integer.parseInt(args[3]);
+      if (args.length > 4) {
+         round = Integer.parseInt(args[4]);
       }
       if (round==2) {
          logger.error("Cannot restart/extend job at round 2. Start a new job instead.");
       }
       else {
          int endRound = 4;
-         if (args.length > 4) {
-            endRound = Integer.parseInt(args[4]);
+         if (args.length > 5) {
+            endRound = Integer.parseInt(args[5]);
          }
-         self.openSqlConnection(args[1], args[2]);
+         self.openSqlConnection(args[1], args[2], args[3]);
          if (self.setJobId()) {
             logger.info("Job #" + jobId + " started");
    
