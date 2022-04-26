@@ -18,7 +18,7 @@ package org.werelate.scripts;
 import org.werelate.parser.StructuredDataParser;
 import org.werelate.parser.WikiReader;
 import org.werelate.utils.Util;
-import org.werelate.utils.EventDate;
+import org.werelate.util.EventDate;
 
 import java.util.Calendar;
 import java.text.SimpleDateFormat;
