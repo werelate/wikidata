@@ -1203,7 +1203,9 @@ public class AnalyzeDataQuality extends StructuredDataParser {
    private void openSqlConnection(String dbHost, String userName, String password) {
       try {
          Class.forName("com.mysql.jdbc.Driver").newInstance();
-         sqlCon = DriverManager.getConnection("jdbc:mysql://" + dbHost + "/wikidb", userName, password);
+         sqlCon = DriverManager.getConnection("jdbc:mysql://" + dbHost + 
+                  "/wikidb?useTimezone=true&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8&user=" + 
+                  userName + "&password=" + password);
          sqlCon.setAutoCommit(false);
       } catch (Exception e) {
          e.printStackTrace();
