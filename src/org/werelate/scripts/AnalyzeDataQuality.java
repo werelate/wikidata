@@ -30,6 +30,8 @@ import java.sql.*;
 import java.sql.Connection;
 import org.apache.log4j.Logger;
 import java.util.HashMap;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 import nu.xom.ParsingException;
 import nu.xom.Element;
@@ -42,8 +44,9 @@ import nu.xom.Elements;
  */
 public class AnalyzeDataQuality extends StructuredDataParser {
    private Connection sqlCon;
-   private static int jobId = 0, round = 0, rows = 0, issueRows = 0;
+   private static int jobId = 0, round = 0, rows = 0, issueRows = 0, actionRows = 0;
    private static SimpleDateFormat cachedtf = new SimpleDateFormat("yyyyMMddkkmmss");
+   private static SimpleDateFormat logdtf = new SimpleDateFormat("yyyy-MM-dd kk:mm:ss");
    private static SimpleDateFormat ymdf = new SimpleDateFormat("yyyy-MM-dd");
    private static Calendar startTime = Calendar.getInstance();
    private static int thisYear = startTime.get(Calendar.YEAR);
@@ -55,9 +58,15 @@ public class AnalyzeDataQuality extends StructuredDataParser {
    private static int usualOldestFather = 70, usualOldestMother = 50;
    private static int absOldestFather = 110, absOldestMother = 80;
    private static int maxSiblingGap = 30, maxAfterParentMarriage = 35;
+   // Templates for addressing issues
+   private static HashMap<String, String> aTemplates = new HashMap<String, String>();
+   private static HashMap<String, String> dTemplates = new HashMap<String, String>();
+   private static Pattern dPat = Pattern.compile("\\{\\{DeferredIssues.*\\}\\}");
+   private static Pattern uPat = Pattern.compile("\\{[^\\|]*\\|[^\\|]*\\|(?:\\[\\[User:)?([^\\]\\|\\}]+)");  // gets user name from template
 
    // For round 1
    private static String[] rowValue = new String[1000];
+   private static String[] actionRowValue = new String[1000];
    // For subsequent rounds
    private static int[] pageId = new int[1000];
    private static String[] pageTitle = new String[1000];
@@ -66,7 +75,6 @@ public class AnalyzeDataQuality extends StructuredDataParser {
    private static Integer[] latestBirth = new Integer[1000];
    private static Integer[] latestDeath = new Integer[1000];
    private static String[] parentPage = new String[1000];
-   private static short[] bornB4ParMarrInd = new short[1000];
    private static int[] latestRoundId = new int[1000];
    private static String[] msg = new String[1000];
    private static String[] birthCalc = new String[1000];
@@ -92,7 +100,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
             Integer latestMarriage = null;
             String parentPage = null, husbandPage = null, wifePage = null;
             String dq_gender = null;
-            short famousInd = 0, ancientInd = 0, diedYoungInd = 0, bornB4ParMarrInd = 0, dateErrorInd = 0;
+            short famousInd = 0, ancientInd = 0, diedYoungInd = 0, dateErrorInd = 0;
             String msg = "", birthCalc = "";
 
             if (!Util.isEmpty(structuredData)) {
@@ -252,11 +260,8 @@ public class AnalyzeDataQuality extends StructuredDataParser {
             if (text.contains("{{Wr-too-far-back}}")) {
                ancientInd = 1;
             }
-            if (text.contains("{{BirthBeforeParentsMarriage")) {
-               bornB4ParMarrInd = 1;
-            }
             if (earliestBirth != null && earliestBirth > latestBirth) {
-               createIssue("Anomaly","Event(s) before birth", pageId);
+               createIssue("Error","Event(s) before birth", pageId);
                latestBirth = earliestBirth;    // Ignore latest birth year set by event(s) before birth
             }
             rowValue[rows++] = " (" + jobId + "," + pageId + "," + ns + ",\"" + SqlTitle(splitTitle[1]) +
@@ -272,11 +277,30 @@ public class AnalyzeDataQuality extends StructuredDataParser {
             if (rows==500) {
                insertRows();
             }
+            
+            /* For each anomaly template, concatenate user info from each occurrence of the template */
+            for (String template : aTemplates.keySet()) {
+               trackUserAction(text, pageId, ns, splitTitle[1], "Anomaly", template, aTemplates.get(template));
+            }
+            /* Check for and handle requests to hide this page on the issues report */
+            trackDeferralRequest(text, pageId, ns, splitTitle[1]);
          }
+
+         /* Check for templates on talk pages as well (where they are expected to be placed) */
+         if (splitTitle[0].equals("Person talk") || splitTitle[0].equals("Family talk")) {
+            int ns = splitTitle[0].equals("Person talk") ? 109 : 111;
+
+            /* For each anomaly template, concatenate user info from each occurrence of the template */
+            for (String template : aTemplates.keySet()) {
+               trackUserAction(text, pageId, ns, splitTitle[1], "Anomaly", template, aTemplates.get(template));
+            }
+            /* Check for and handle requests to hide this page on the issues report */
+            trackDeferralRequest(text, pageId, ns, splitTitle[1]);
+         }   
       }
    }
 
-      /* Prepare the issue for writing to the database (and write if array is full). */
+   /* Prepare the issue for writing to the database (and write if array is full). */
    private void createIssue(String cat, String desc, int pageId) {
       // Check for a duplicate issue - if so, ignore
       for (int j=0; j<issueRows; j++) {
@@ -286,8 +310,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
       } 
       issuePageId[issueRows] = pageId;
       issueDesc[issueRows] = desc;
-      issueRowValue[issueRows++] = " (" + jobId + "," + pageId + ",\"" + cat + "\",\"" + desc +
-            "\"," + "\"\", \"\")";
+      issueRowValue[issueRows++] = " (" + jobId + "," + pageId + ",\"" + cat + "\",\"" + desc + "\")";
       if (issueRows==1000) {
          insertIssueRows();
       }
@@ -304,8 +327,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
       } 
       issuePageId[issueRows] = pageId[i];
       issueDesc[issueRows] = desc;
-      issueRowValue[issueRows++] = " (" + jobId + "," + pageId[i] + ",\"" + cat + "\",\"" + desc +
-            "\"," + "\"\", \"\")";
+      issueRowValue[issueRows++] = " (" + jobId + "," + pageId[i] + ",\"" + cat + "\",\"" + desc + "\")";
       if (issueRows==1000) {
          insertIssueRows();
       }
@@ -338,8 +360,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
    }
 
    private void insertIssueRows() {
-      String sql = "INSERT INTO dq_issue (dqi_job_id, dqi_page_id, dqi_category, dqi_issue_desc, " +
-                   "dqi_verified_by, dqi_viewed_by) VALUES";
+      String sql = "INSERT INTO dq_issue_capture (dqi_job_id, dqi_page_id, dqi_category, dqi_issue_desc) VALUES";
       if (issueRows>0) {
          for (int i=0; i<issueRows; i++) {
             sql += issueRowValue[i];
@@ -358,6 +379,69 @@ public class AnalyzeDataQuality extends StructuredDataParser {
             e.printStackTrace();
          } 
       issueRows = 0;
+      }
+   }
+
+   private void trackUserAction(String text, int pageId, int ns, String title, String type, String template, String desc) {
+      boolean action = false;
+      String aUser = "";
+      Pattern tPat = Pattern.compile("\\{\\{" + template + ".*\\}\\}");
+      Matcher tMat = tPat.matcher(text);
+      while (tMat.find()) {
+         action = true;             // Track user action whether or not user is identified
+         Matcher uMat = uPat.matcher(tMat.group());
+         if (uMat.find()) {
+            aUser += (aUser == "" ? "" : ", ") + uMat.group(1);
+         }
+      }
+      if (action) {
+         actionRowValue[actionRows++] = " (" + jobId + "," + pageId + "," + ns + ",\"" + SqlTitle(title) + "\",\"" + type + "\",\"" + 
+               desc + "\",\"" + (aUser=="" ? "unidentified" : aUser) + "\")";
+      }
+      if (actionRows==1000) {
+         insertActionRows();
+      }
+   }
+
+   private void trackDeferralRequest(String text, int pageId, int ns, String title) {
+      String dUser = "";
+      Matcher dMat = dPat.matcher(text);
+      while (dMat.find()) {
+         Matcher uMat = uPat.matcher(dMat.group());
+         if (uMat.find()) {
+            dUser += (dUser == "" ? "|" : "") + uMat.group(1) + "|";         
+         }
+      }
+      if (!dUser.equals("")) {         // Track deferral request only if user(s) is identified
+         actionRowValue[actionRows++] = " (" + jobId + "," + pageId + "," + ns + ",\"" + SqlTitle(title) + 
+               "\",\"Page\",\"Deferral\",\"" + dUser + "\")";
+
+      }
+      if (actionRows==1000) {
+         insertActionRows();
+      }
+   }
+
+   private void insertActionRows() {
+      String sql = "INSERT INTO dq_action (dqa_job_id, dqa_page_id, dqa_namespace, dqa_title, dqa_type, dqa_desc, dqa_action_by) VALUES";
+      if (actionRows>0) {
+         for (int i=0; i<actionRows; i++) {
+            sql += actionRowValue[i];
+            if (i<(actionRows-1)) {
+               sql += ", ";
+            }
+            else {
+               sql += ";";
+            }
+         }
+         try (PreparedStatement stmt = sqlCon.prepareStatement(sql)) {
+            stmt.executeUpdate();
+            commitSql();
+         } catch (SQLException e) {
+            rollbackSql();
+            e.printStackTrace();
+         } 
+      actionRows = 0;
       }
    }
 
@@ -661,8 +745,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                         /* Check for errors (only in second round) */
                         if (round==2) {
                            if (actualBirth[i]!=null) {
-                              if (parEarliestMarriageYear!=null && actualBirth[i] < parEarliestMarriageYear
-                                    && bornB4ParMarrInd[i]==0) {     // suppress this warning if acknowledged
+                              if (parEarliestMarriageYear!=null && actualBirth[i] < parEarliestMarriageYear) {
                                  createIssue(i,"Anomaly","Born before parents' marriage");
                               }
                               if (mActualBirthYear==null && fActualBirthYear==null
@@ -852,6 +935,78 @@ public class AnalyzeDataQuality extends StructuredDataParser {
       return updatedRows;
    }
 
+   /* This function both:
+      - associates the verification information with each issue and 
+      - copies issues to the dq_issue table in the desired order for display on the wiki
+        - this not only helps with performance, but also ensures that scrolling works correctly when titles include special characters */
+   private void updateVerifiedBy() {
+      String ver = "INSERT INTO dq_issue (dqi_job_id, dqi_page_id, dqi_category, dqi_issue_desc, dqi_verified_by) " +
+      "SELECT dqi_job_id, dqi_page_id, dqi_category, dqi_issue_desc, dqa_action_by " +
+      "FROM dq_issue_capture " +
+      "INNER JOIN dq_page_analysis ON dqi_job_id = dq_job_id AND dqi_page_id = dq_page_id " +
+      "LEFT OUTER JOIN " +
+      "(SELECT p.dqa_job_id, p.dqa_page_id, p.dqa_desc, CONCAT(p.dqa_action_by, \", \", t.dqa_action_by) AS dqa_action_by " +
+         "FROM dq_action p INNER JOIN dq_action t ON p.dqa_job_id = t.dqa_job_id AND p.dqa_namespace IN (108,110) " +
+         "AND p.dqa_namespace = t.dqa_namespace-1 AND p.dqa_title = t.dqa_title AND p.dqa_desc = t.dqa_desc " +
+         "WHERE p.dqa_action_by <> \"unidentified\" and t.dqa_action_by <> \"unidentified\" " +
+         "AND p.dqa_type = \"Anomaly\" " +
+      "UNION " +
+      "SELECT p.dqa_job_id, p.dqa_page_id, p.dqa_desc, p.dqa_action_by " +
+         "FROM dq_action p LEFT OUTER JOIN dq_action t ON p.dqa_job_id = t.dqa_job_id AND p.dqa_namespace = t.dqa_namespace-1 " +
+         "AND p.dqa_title = t.dqa_title AND p.dqa_desc = t.dqa_desc " +
+         "WHERE p.dqa_namespace IN (108,110) AND t.dqa_page_id IS NULL OR t.dqa_action_by = \"unidentified\" " +
+         "AND p.dqa_type = \"Anomaly\" " +
+      "UNION " +
+      "SELECT t.dqa_job_id, a.dq_page_id, t.dqa_desc, t.dqa_action_by " +
+         "FROM dq_action t INNER JOIN dq_page_analysis a ON t.dqa_job_id = a.dq_job_id AND t.dqa_namespace = a.dq_namespace+1 " +
+         "AND t.dqa_title = a.dq_title " +
+         "LEFT OUTER JOIN dq_action p ON p.dqa_job_id = t.dqa_job_id AND p.dqa_namespace = t.dqa_namespace-1 " +
+         "AND p.dqa_title = t.dqa_title AND p.dqa_desc = t.dqa_desc " +
+         "WHERE t.dqa_namespace IN (109,111) AND p.dqa_page_id IS NULL OR p.dqa_action_by = \"unidentified\" " +
+         "AND t.dqa_type = \"Anomaly\") b " + 
+      "ON dqi_job_id = dqa_job_id AND dqi_page_id = dqa_page_id AND dqi_category = \"Anomaly\" AND dqi_issue_desc = dqa_desc " +
+      "ORDER BY dq_namespace, CASE dq_namespace WHEN 108 THEN CONCAT(SUBSTRING_INDEX(SUBSTRING_INDEX(dq_title, '_', 2), '_', -1), " + 
+         "'_', SUBSTRING_INDEX(dq_title, '_', 1), '_', SUBSTRING_INDEX(dq_title, '_', -1)) ELSE dq_title END, dqi_issue_desc;";
+      try (Statement stmt = sqlCon.createStatement()) {
+         stmt.executeUpdate(ver);
+         commitSql();
+      } catch (SQLException e) {
+         e.printStackTrace();
+      }
+   }
+
+   private void updateDeferredBy() {
+      String def = "UPDATE dq_page_analysis, " +
+      "(SELECT p.dqa_job_id, p.dqa_page_id, CONCAT(p.dqa_action_by, \"|\", t.dqa_action_by) AS dqa_action_by " +
+         "FROM dq_action p INNER JOIN dq_action t ON p.dqa_job_id = t.dqa_job_id AND p.dqa_namespace IN (108,110) " +
+         "AND p.dqa_namespace = t.dqa_namespace-1 AND p.dqa_title = t.dqa_title AND p.dqa_desc = t.dqa_desc " +
+         "WHERE p.dqa_type = \"Page\" AND p.dqa_desc = \"Deferral\" " +
+      "UNION " +
+      "SELECT p.dqa_job_id, p.dqa_page_id, p.dqa_action_by " +
+         "FROM dq_action p LEFT OUTER JOIN dq_action t ON p.dqa_job_id = t.dqa_job_id AND p.dqa_namespace = t.dqa_namespace-1 " +
+         "AND p.dqa_title = t.dqa_title AND p.dqa_desc = t.dqa_desc " +
+         "WHERE p.dqa_namespace IN (108,110) AND t.dqa_page_id IS NULL " +
+         "AND p.dqa_type = \"Page\" AND p.dqa_desc = \"Deferral\" " +
+      "UNION " +
+      "SELECT t.dqa_job_id, a.dq_page_id, t.dqa_action_by " +
+         "FROM dq_action t INNER JOIN dq_page_analysis a ON t.dqa_job_id = a.dq_job_id AND t.dqa_namespace = a.dq_namespace+1 " +
+         "AND t.dqa_title = a.dq_title " +
+         "LEFT OUTER JOIN dq_action p ON p.dqa_job_id = t.dqa_job_id AND p.dqa_namespace = t.dqa_namespace-1 " +
+         "AND p.dqa_title = t.dqa_title AND p.dqa_desc = t.dqa_desc " +
+         "WHERE t.dqa_namespace IN (109,111) AND p.dqa_page_id IS NULL " +
+         "AND t.dqa_type = \"Page\" AND t.dqa_desc = \"Deferral\") b " +
+      "SET dq_viewed_by = dqa_action_by " +
+      "WHERE dq_job_id = dqa_job_id AND dq_page_id = dqa_page_id;";
+
+      try (Statement stmt = sqlCon.createStatement()) {
+         // Update dq_viewed_by column of dq_page table
+         stmt.executeUpdate(def);
+         commitSql();
+      } catch (SQLException e) {
+         e.printStackTrace();
+      }
+   }
+
    private void copyIssues() {
       ResultSet rs;
       Calendar yesterday = Calendar.getInstance();
@@ -870,7 +1025,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                             "OR ((dq_latest_birth_year IS NULL OR dq_latest_birth_year > " + livingTh + ") " + 
                                "AND dq_latest_death_year IS NULL)) " +
                         "OR dq_page_id IN " +
-                           "(SELECT dqi_page_id FROM dq_issue WHERE dqi_job_id = " + jobId + ")) " +
+                           "(SELECT dqi_page_id FROM dq_issue_capture WHERE dqi_job_id = " + jobId + ")) " +
                     "ORDER BY dq_page_id;";  
 
       /* Statistics queries */                           
@@ -891,7 +1046,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
       String chron = "SELECT COUNT(*) AS count FROM dq_page " +
                      "WHERE dq_job_id = " + jobId + " AND dq_namespace = 108 " +
                      "AND dq_latest_birth_year < dq_earliest_birth_year;";                      
-      String anomaly = "SELECT dqi_category, dqi_issue_desc, COUNT(*) AS count FROM dq_issue " +
+      String anomaly = "SELECT dqi_category, dqi_issue_desc, COUNT(*) AS count FROM dq_issue_capture " +
                      "WHERE dqi_job_id = " + jobId + 
                      " GROUP BY dqi_category, dqi_issue_desc ORDER BY dqi_category, dqi_issue_desc;";
 
@@ -1012,6 +1167,18 @@ public class AnalyzeDataQuality extends StructuredDataParser {
       } catch (SQLException e) {
          e.printStackTrace();
       }
+      purge = "TRUNCATE dq_issue_capture;";
+      try (Statement truncate = sqlCon.createStatement()) {
+         truncate.executeUpdate(purge);
+      } catch (SQLException e) {
+         e.printStackTrace();
+      }
+      purge = "TRUNCATE dq_action;";
+      try (Statement truncate = sqlCon.createStatement()) {
+         truncate.executeUpdate(purge);
+      } catch (SQLException e) {
+         e.printStackTrace();
+      }
    }
 
    private void purgeIssues() {
@@ -1051,6 +1218,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
       System.out.println();
    }
 
+   /* This function drops secondary indexes on dq_page_analysis to improve performance during initial population in round 1. */
    private void dropIndexes() {
       String drop;
       String[] index = getIndexes();
@@ -1125,13 +1293,13 @@ public class AnalyzeDataQuality extends StructuredDataParser {
    private boolean setJobId() {
       String analysisJob = "SELECT dq_job_id FROM dq_page_analysis ORDER BY dq_job_id DESC LIMIT 1;";
       String issuesJob = "SELECT dq_job_id FROM dq_page ORDER BY dq_job_id DESC LIMIT 1;";
-      String statsJob = "SELECT dqs_job_id FROM dq_stats ORDER BY dqs_job_id DESC LIMIT 1;";
       String issueJob = "SELECT dqi_job_id FROM dq_issue ORDER BY dqi_job_id DESC LIMIT 1;";
+      String statsJob = "SELECT dqs_job_id FROM dq_stats ORDER BY dqs_job_id DESC LIMIT 1;";
       ResultSet rs;
       try (Statement stmt = sqlCon.createStatement()) {
 
          /* If restarting/extending a job, jobId has to be last jobId in dq_page_analysis
-            and there cannot be any records in dq_page or dq_stats for this or a later job. */
+            and there cannot be any records in dq_page, dq_issue or dq_stats for this or a later job. */
          if (round>1) {
             rs = stmt.executeQuery(analysisJob);
             if (rs.next()) {
@@ -1259,6 +1427,19 @@ public class AnalyzeDataQuality extends StructuredDataParser {
 
       // Initialize
       AnalyzeDataQuality self = new AnalyzeDataQuality();
+      
+      // Keep these in sync with the message text assigned during page analysis above
+      aTemplates.put("BirthBeforeParentsMarriage", "Born before parents' marriage");
+      aTemplates.put("BirthLongAfterParentsMarriage", "Born over " + maxAfterParentMarriage + " after parents' marriage");
+      aTemplates.put("UnusuallyYoungMother", "Born before mother was " + usualYoungestMother);
+      aTemplates.put("UnusuallyYoungFather", "Born before father was " + usualYoungestFather);
+      aTemplates.put("UnusuallyOldMother", "Born after mother was " + usualOldestMother);
+      aTemplates.put("UnusuallyOldFather", "Born after father was " + usualOldestFather);
+      aTemplates.put("UnusuallyYoungWife", "Wife younger than " + minMarriageAge + " at marriage");
+      aTemplates.put("UnusuallyYoungHusband", "Husband younger than " + minMarriageAge + " at marriage");
+      aTemplates.put("UnusuallyOldWife", "Wife older than " + maxMarriageAge + " at marriage");
+      aTemplates.put("UnusuallyOldHusband", "Husband older than " + maxMarriageAge + " at marriage");
+
       // By default, go from round 1 to round 4, but user can override (for restartability or extension)
       round = 1;
       if (args.length > 4) {
@@ -1274,7 +1455,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
          }
          self.openSqlConnection(args[1], args[2], args[3]);
          if (self.setJobId()) {
-            logger.info("Job #" + jobId + " started");
+            logger.info("Job #" + jobId + " started at " + logdtf.format(startTime.getTime()));
    
             // Initial round - create rows in dq_page_analysis table (after truncating the table)
             if (round == 1) {
@@ -1292,6 +1473,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                } finally {
                   self.insertRows(); // Last set of rows
                   self.insertIssueRows();
+                  self.insertActionRows();
                   in.close();
                }
                logger.info("Job #" + jobId + " round 1 ended");
@@ -1302,13 +1484,18 @@ public class AnalyzeDataQuality extends StructuredDataParser {
             while (round <= endRound) {
                self.createIndexes();
                self.nextRound();
+               if (round==2) {
+                  self.updateVerifiedBy();
+                  self.updateDeferredBy();
+               }
                round++;
             }
    
             // Copy rows indicating an issue to the dq_page table, and output counts of issue types.
             self.copyIssues();
    
-            logger.info("Job #" + jobId + " ended");
+            Calendar endTime = Calendar.getInstance();
+            logger.info("Job #" + jobId + " ended at " + logdtf.format(endTime.getTime()));
             self.writeCacheTime(cachedtf.format(startTime.getTime()));
          }
          else {
