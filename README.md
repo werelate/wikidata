@@ -25,7 +25,7 @@ wikidata/shell/run.sh org.werelate.scripts.ExtractPlaces pages.xml place_words.t
 ```
 wikidata/shell/run.sh org.werelate.scripts.GeneratePlaceAbbrevs places.tsv place_links.tsv place_abbrevs2.tsv
 # CREATE TABLE place_abbrevs2 like place_abbrevs;
-mysqlimport -h <host> -u<user> -p<password> --default-character-set=utf8mb4 --fields-terminated-by='\t' --local trees place_abbrevs2.tsv
+mysqlimport -h <host> -u<user> -p<password> --default-character-set=utf8mb4 --fields-terminated-by='\t' --local wikidb place_abbrevs2.tsv
 # DROP TABLE place_abbrevs1;
 # RENAME TABLE place_abbrevs TO place_abbrevs1, place_abbrevs2 TO place_abbrevs;
 ```

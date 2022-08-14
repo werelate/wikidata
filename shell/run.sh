@@ -1,6 +1,6 @@
 #!/bin/bash
 cd "$( dirname "${BASH_SOURCE[0]}" )"
-java -Xmx1024m \
+java -Xmx1280m \
 -Dfile.encoding=UTF-8 \
 -DentityExpansionLimit=2147480000 \
 -DtotalEntitySizeLimit=2147480000 \
