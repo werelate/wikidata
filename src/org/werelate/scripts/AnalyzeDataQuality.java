@@ -45,6 +45,7 @@ import nu.xom.Elements;
 public class AnalyzeDataQuality extends StructuredDataParser {
    private Connection sqlCon;
    private static int jobId = 0, round = 0, rows = 0, issueRows = 0, actionRows = 0;
+   private static int givenUnknown = 0, surnameUnknown = 0;
    private static SimpleDateFormat cachedtf = new SimpleDateFormat("yyyyMMddkkmmss");
    private static SimpleDateFormat logdtf = new SimpleDateFormat("yyyy-MM-dd kk:mm:ss");
    private static SimpleDateFormat ymdf = new SimpleDateFormat("yyyy-MM-dd");
@@ -78,6 +79,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
    private static int[] latestRoundId = new int[1000];
    private static String[] msg = new String[1000];
    private static String[] birthCalc = new String[1000];
+   private static short[] proxyBirthInd = new short[1000];
    // For all rounds
    private static int[] issuePageId = new int[1000];
    private static String[] issueDesc = new String[1000];
@@ -95,19 +97,44 @@ public class AnalyzeDataQuality extends StructuredDataParser {
             Integer actualBirth = null;
             Integer earliestBirth = null;
             Integer latestBirth = null;
+            Integer earliestDeath = null;    // Not written to db; only used in round 1 to find events out of order
             Integer latestDeath = null;
             Integer earliestMarriage = null;
             Integer latestMarriage = null;
             String parentPage = null, husbandPage = null, wifePage = null;
             String dq_gender = null;
             short famousInd = 0, ancientInd = 0, diedYoungInd = 0, dateErrorInd = 0;
+            short proxyBirthInd = 0;
             String msg = "", birthCalc = "";
+            Boolean invalidDate = false;
+            Integer firstNotBirth = null, firstPostDeath = null, lastLiving = null, latestPossBirth = null;
+            Boolean eventOrderError = false; 
 
             if (!Util.isEmpty(structuredData)) {
                Element root = parseText(structuredData).getRootElement();
                Element elm;
                Elements elms;
                Integer actualYear = null, earliestYear = null, latestYear = null;
+
+               // If a person page, determine whether a name is missing and count accordingly
+               if (ns==108) {
+                  elms = root.getChildElements("name");
+                  if (elms.size()>0) {
+                     elm = elms.get(0);
+                     String givenName = elm.getAttributeValue("given");
+                     if (isUnknownName(givenName)) {
+                        givenUnknown++;
+                     }
+                     String surname = elm.getAttributeValue("surname");
+                     if (isUnknownName(surname)) {
+                        surnameUnknown++;
+                     }
+                  }
+                  else {
+                     givenUnknown++;
+                     surnameUnknown++;
+                  }
+               }
 
                // Extract information and prepare for sql
                elms = root.getChildElements("event_fact");
@@ -126,8 +153,10 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                      try {
                         EventDate eventDate = new EventDate(date);
                         date = eventDate.formatDate();
-                        if (!eventDate.editDate()) {
-                           dateErrorInd = 1;
+
+                        // Track if a date doesn't pass the edit check
+                        if (!invalidDate && !eventDate.editDate()) {
+                           invalidDate = true;
                         }
 
                         if (date.startsWith("Aft") || date.startsWith("Bet") || date.startsWith("From")) {
@@ -155,41 +184,91 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                      diedYoungInd = 1;
                   }
 
-                  // For a person, determine actual, earliest and latest birth year, and latest death year.
+                  // For a person, determine actual, earliest and latest birth year, and earliest and latest death year.
                   // Earliest and latest birth years can be changed in later rounds, based on dates of family members.
-                  // Latest death year is based solely on the info on this Person page.
+                  // Earliest and latest death years are based solely on the info on this Person page.
+                  // For birth year, consider birth, christening and baptism dates, in that precedence.
                   if (ns == 108) {
-                     if (eventType.equals("Birth") || (eventType.equals("Christening") && latestBirth == null)) {
+                     if (eventType.equals("Birth") || 
+                           (eventType.equals("Christening") && ((earliestBirth == null && latestBirth == null) || proxyBirthInd==1)) ||
+                           (eventType.equals("Baptism") && earliestBirth == null && latestBirth == null)) {
+                        if (eventType.equals("Birth")) {
+                           proxyBirthInd = 0;
+                        }
+                        else {
+                           proxyBirthInd = 1;
+                        }
                         actualBirth = actualYear;
                         earliestBirth = earliestYear;
                         latestBirth = latestYear;
-                        if (earliestBirth != null && latestBirth == null) {
-                           latestBirth = earliestBirth + usualLongestLife;  // somewhat arbitrary, but needs a value if earliest is set
-                        }
                      }
                      else {
-                        if (!eventType.startsWith("Alt")) {    // ignore Alt events
-                           if (latestBirth == null || (latestYear != null && latestYear < latestBirth)) {
-                              latestBirth = latestYear;
-                           }
-                           /* If we haven't already set birth year, and the new date is after a date, 
-                              assume the person was born within 110 years of the date, in case there are no other
-                              dates with more info. */
-                           if (earliestBirth == null && latestBirth == null && earliestYear != null) {
-                              earliestBirth = earliestYear - usualLongestLife;
-                              latestBirth = earliestYear + usualLongestLife;
+                        if (!eventType.startsWith("Alt")) {    // if neither Birth nor Alt event, keep track of latest possible birth year
+                           if (latestYear != null && (latestPossBirth == null || latestYear < latestPossBirth)) {
+                              latestPossBirth = latestYear;
                            }
                         }
                      }
-                     // Ignore future and estimated death dates - these signify an unknown death date.
-                     if (latestYear != null && latestYear <= thisYear && !date.contains("Est")) {
-                        if (eventType.equals("Death") || (eventType.equals("Burial") && latestDeath == null)) {
+
+                     // For death date, ignore future and estimated death dates - these signify an unknown death date.
+                     if (eventType.equals("Death") || (eventType.equals("Burial") && latestDeath == null)) {
+                        if (latestYear != null && latestYear <= thisYear && !date.contains("Est")) {
                            latestDeath = latestYear;
                         }
+                        if (earliestYear != null && earliestYear <= thisYear && !date.contains("Est")) {
+                           earliestDeath = earliestYear;
+                        }
                      }
-                     // Latest birth could be after latest death if there is a post-death event such as probate.
-                     if (latestBirth != null && latestDeath != null && latestBirth > latestDeath) {
-                        latestBirth = latestDeath;
+
+                     // Determine dates for doing "events out of order" checks. These dates are captured first and the "out of order"
+                     // checks done later to ensure the code works regardless of the order in which events are encountered.
+
+                     // Keep rules in sync with similar rules in ESINHandler.php (more explanation exists there).
+                     // Note: Rules in ESINHandler depend on sort order, which relies on the beginning date of a date range - 
+                     // therefore these rules use earliestYear when available and latestYear otherwise. Rules may not evaluate
+                     // exactly the same here as in the wiki, due to how the wiki sorts inexact dates, but these rules should be
+                     // close enough.
+                     if (!eventType.startsWith("Alt") && (earliestYear != null || latestYear != null)) {    // ignore Alt events
+                        if (!eventType.equals("Birth")) {
+                           if (earliestYear != null && (firstNotBirth == null || earliestYear < firstNotBirth)) {
+                              firstNotBirth = earliestYear;
+                           }
+                           else {
+                              if (latestYear != null && (firstNotBirth == null || latestYear < firstNotBirth)) {
+                                 firstNotBirth = latestYear;
+                              }
+                           }
+                        }
+                        if (eventType.equals("Burial") || eventType.equals("Obituary") || 
+                              eventType.equals("Funeral") || eventType.equals("Cremation") || 
+                              eventType.equals("Cause of Death") || eventType.equals("Estate Inventory") || 
+                              eventType.equals("Probate") || eventType.equals("Estate Settlement")) {
+                           if (earliestYear != null && (firstPostDeath == null || earliestYear < firstPostDeath)) {
+                              firstPostDeath = earliestYear;
+                           }
+                           else {
+                              if (latestYear != null && (firstPostDeath == null || latestYear < firstPostDeath)) {
+                                 firstPostDeath = latestYear;
+                              }
+                           }
+                        }
+                        if (!eventType.equals("Death") && !eventType.equals("Burial") && !eventType.equals("Obituary") &&
+                              !eventType.equals("Funeral") && !eventType.equals("Cremation") &&
+                              !eventType.equals("Cause of Death") && !eventType.equals("Estate Inventory") && 
+                              !eventType.equals("Probate") && !eventType.equals("Estate Settlement") &&
+                              !eventType.equals("DNA") && !eventType.equals("Other") && !eventType.equals("Will") && 
+                              !eventType.equals("Property") && !eventType.equals("Religion")) {
+                           if (earliestYear != null) {
+                              if (lastLiving == null || earliestYear > lastLiving) {
+                                 lastLiving = earliestYear;
+                              }
+                           }
+                           else {
+                              if (latestYear != null && (lastLiving == null || latestYear > lastLiving)) {
+                                 lastLiving = latestYear;
+                              }
+                           }
+                        }
                      }
                   }
 
@@ -210,12 +289,6 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                   }
                }
 
-               // If any event found, but not birth/christening, earliest birth is 110 years before the event.
-               if (ns == 108) {
-                  if (latestBirth != null && earliestBirth == null) {
-                     earliestBirth = latestBirth - usualLongestLife;
-                  }
-               }
                if (ns == 108) {
                   elms = root.getChildElements("child_of_family");
                   if (elms.size() > 0) {
@@ -254,16 +327,79 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                   }
                }   
             }
+
             if (text.contains("{{FamousLivingPersonException") || text.contains("{{Wikidata|Q")) {
                famousInd = 1;
             }
             if (text.contains("{{Wr-too-far-back}}")) {
                ancientInd = 1;
             }
-            if (earliestBirth != null && earliestBirth > latestBirth) {
-               createIssue("Error","Event(s) before birth", pageId);
-               latestBirth = earliestBirth;    // Ignore latest birth year set by event(s) before birth
+             
+            // Some additional processing for a person, once information has been gathered from all events
+            if (ns == 108) {
+               // If latest and/or earliest birth years not yet set and there were events with dates, set them now.
+               // Note that these statements are in order according to precedence of how to set the dates. It is important
+               // that the statement to set latest birth date based on earliest birth date comes before earliest birth date is set here, 
+               // and that the last statement that could set both dates is after the other statements.
+               if (latestBirth == null && latestPossBirth != null && (earliestBirth == null || latestPossBirth >= earliestBirth)) {
+                  latestBirth = latestPossBirth;                   // Earliest date (using end of date range when applicable) from other events
+               }
+               if (latestBirth == null && earliestBirth != null) {
+                  latestBirth = earliestBirth + usualLongestLife;     // 110 years after earliest birth year (somewhat arbitrary)
+               }
+               if (earliestBirth == null && earliestDeath != null) {
+                  earliestBirth = earliestDeath - usualLongestLife;   // 110 years before earliest death year
+               }
+               if (earliestBirth == null && lastLiving != null) {
+                  earliestBirth = lastLiving - usualLongestLife;      // 110 years before last "living" event (using start of date range)
+               }
+               if (earliestBirth == null && latestBirth != null) {
+                  earliestBirth = latestBirth - usualLongestLife;     // 110 years before latest birth year (somewhat arbitrary)
+               }
+               if (latestBirth == null && firstNotBirth != null) {
+                  latestBirth = firstNotBirth + usualLongestLife;  // 110 years after earliest year (using start of date range) from other events
+                  if (earliestBirth == null) {
+                     earliestBirth = firstNotBirth - usualLongestLife;  // 110 years before earliest year from other events
+                  }
+               }
+
+               // Check for event before birth (only if birth year is based on birth event rather than a proxy).
+               if (proxyBirthInd == 0 && firstNotBirth != null) {
+                  if ((earliestBirth != null && firstNotBirth < earliestBirth) || 
+                        (earliestBirth == null && latestBirth != null && firstNotBirth < latestBirth)) {
+                     eventOrderError = true;
+                  }
+               }
+               // Check for event that can only occur after death occurring before death.
+               if (firstPostDeath != null) {
+                  if ((earliestDeath != null && firstPostDeath < earliestDeath) || 
+                        (earliestDeath == null && latestDeath != null && firstPostDeath < latestDeath)) {
+                     eventOrderError = true;
+                  }
+               }
+               // Check for event that can only occur while living occurring after death.
+               if (lastLiving != null) {
+                  if ((earliestDeath != null && lastLiving > earliestDeath) || 
+                        (earliestDeath == null && latestDeath != null && lastLiving > latestDeath)) {
+                     eventOrderError = true;
+                  }
+               }
+               if (eventOrderError) {
+                  createIssue("Error","Event(s) out of order", pageId);
+               }
+
+               // Living event or death more than 125 years after birth
+               if ((lastLiving != null && latestBirth != null && lastLiving > latestBirth + absLongestLife) ||
+                     (earliestDeath != null && latestBirth != null && earliestDeath > latestBirth + absLongestLife)) {
+                  createIssue("Error","Event(s) more than " + absLongestLife + " years after birth", pageId);
+               }
             }
+
+            // For both person and family pages - error if an invalid date found
+            if (invalidDate) {
+               createIssue("Error","Invalid date(s); edit the page to see message(s)", pageId);
+            }
+
             rowValue[rows++] = " (" + jobId + "," + pageId + "," + ns + ",\"" + SqlTitle(splitTitle[1]) +
                       "\"," + actualBirth + "," + earliestBirth + "," +
                      latestBirth + "," + 
@@ -271,9 +407,8 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                      (parentPage==null ? "null" : "\"" + parentPage + "\"") + "," + 
                      (husbandPage==null ? "null" : "\"" + husbandPage + "\"") + "," + 
                      (wifePage==null ? "null" : "\"" + wifePage + "\"") + "," + 
-                     diedYoungInd + "," +
-                     famousInd + "," + ancientInd + ",\"" + 
-                     username + "\",\"" + birthCalc + "\"" + ")";
+                     diedYoungInd + "," + famousInd + "," + ancientInd + ",\"" + 
+                     username + "\",\"" + birthCalc + "\"," + proxyBirthInd + ")";
             if (rows==500) {
                insertRows();
             }
@@ -282,7 +417,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
             for (String template : aTemplates.keySet()) {
                trackUserAction(text, pageId, ns, splitTitle[1], "Anomaly", template, aTemplates.get(template));
             }
-            /* Check for and handle requests to hide this page on the issues report */
+            /* Check for and handle deferral actions for this page */
             trackDeferralRequest(text, pageId, ns, splitTitle[1]);
          }
 
@@ -294,20 +429,38 @@ public class AnalyzeDataQuality extends StructuredDataParser {
             for (String template : aTemplates.keySet()) {
                trackUserAction(text, pageId, ns, splitTitle[1], "Anomaly", template, aTemplates.get(template));
             }
-            /* Check for and handle requests to hide this page on the issues report */
+            /* Check for and handle deferral actions for this page */
             trackDeferralRequest(text, pageId, ns, splitTitle[1]);
          }   
       }
    }
 
+   // The rules in this function match the check in the wiki (StructuredData.php isUnknownName)
+   private boolean isUnknownName(String name) {
+      if (name==null) {
+         return true;
+      }
+      String[] unknownNames = {"", "unknown", "unk", "n.n.", "n.n", "nn", "nn.", "n n", "fnu", "lnu", "father", "mother"};
+      String checkName = name.replace("?","").replace("_","").replace("-","").trim().toLowerCase();
+      for (String unknownName : unknownNames) {
+         if (checkName.equals(unknownName)) {
+            return true;
+         }
+      }
+      return false;
+   } 
+
    /* Prepare the issue for writing to the database (and write if array is full). */
    private void createIssue(String cat, String desc, int pageId) {
-      // Check for a duplicate issue - if so, ignore
+
+      // Check for a duplicate issue - if so, ignore - this code should not be required
+      /*
       for (int j=0; j<issueRows; j++) {
          if (issuePageId[j]==pageId && issueDesc[j].equals(desc)) {
             return;
          }
-      } 
+      }
+      */ 
       issuePageId[issueRows] = pageId;
       issueDesc[issueRows] = desc;
       issueRowValue[issueRows++] = " (" + jobId + "," + pageId + ",\"" + cat + "\",\"" + desc + "\")";
@@ -319,12 +472,14 @@ public class AnalyzeDataQuality extends StructuredDataParser {
    /* Prepare the issue for writing to the database (and write if array is full. */
    private void createIssue(int i, String cat, String desc) {
 
-      // Check for a duplicate issue - if so, ignore
+      // Check for a duplicate issue - if so, ignore - this code should not be required
+      /*
       for (int j=0; j<issueRows; j++) {
          if (issuePageId[j]==pageId[i] && issueDesc[j].equals(desc)) {
             return;
          }
-      } 
+      }
+      */ 
       issuePageId[issueRows] = pageId[i];
       issueDesc[issueRows] = desc;
       issueRowValue[issueRows++] = " (" + jobId + "," + pageId[i] + ",\"" + cat + "\",\"" + desc + "\")";
@@ -339,7 +494,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                    "dq_latest_death_year, dq_earliest_marriage_year, dq_latest_marriage_year, " +
                    "dq_parent_page, dq_husband_page, dq_wife_page, " +
                    "dq_died_young_ind, dq_famous_ind, dq_ancient_ind, " +
-                   "dq_last_user, dq_birth_calc) VALUES";
+                   "dq_last_user, dq_birth_calc, dq_proxy_birth_ind) VALUES";
       for (int i=0; i<rows; i++) {
          sql += rowValue[i];
          if (i<(rows-1)) {
@@ -457,7 +612,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
          between earliest and latest birth year. */
       if (round == 2) {
          query = "SELECT dq_page_id, dq_title, dq_actual_birth_year, dq_earliest_birth_year," +
-                 " dq_latest_birth_year, dq_latest_death_year, dq_parent_page, dq_birth_calc" + 
+                 " dq_latest_birth_year, dq_latest_death_year, dq_parent_page, dq_birth_calc, dq_proxy_birth_ind" + 
                  " FROM dq_page_analysis" +
                  " WHERE dq_job_id = " + jobId + " AND dq_namespace = 108 AND dq_page_id > ?" +
                  " ORDER BY dq_page_id LIMIT " + limit + ";";
@@ -488,6 +643,9 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                   latestDeath[rows] = getInteger(rs, "dq_latest_death_year");
                   parentPage[rows] = SqlTitle(rs.getString("dq_parent_page"));
                   birthCalc[rows] = rs.getString("dq_birth_calc");
+                  if (round == 2) {
+                     proxyBirthInd[rows] = rs.getShort("dq_proxy_birth_ind");
+                  }
                   latestRoundId[rows] = 0;  // reset for this group of records
                   rows++;
                }
@@ -752,7 +910,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                                     && parLatestMarriageYear!=null 
                                     && actualBirth[i] > parLatestMarriageYear + maxAfterParentMarriage) {
                                  createIssue(i,"Anomaly","Born over " + 
-                                       maxAfterParentMarriage + " after parents' marriage");
+                                       maxAfterParentMarriage + " years after parents' marriage");
                               }
                               if (mActualBirthYear!=null) {
                                  if (actualBirth[i] < mActualBirthYear + absYoungestMother) {
@@ -763,7 +921,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                                        createIssue(i,"Anomaly","Born before mother was " + usualYoungestMother);
                                     }
                                  }
-                                 if (actualBirth[i] > mActualBirthYear + absOldestMother) {
+                                 if ((actualBirth[i] > mActualBirthYear + absOldestMother) && proxyBirthInd[i]==0) {
                                     createIssue(i,"Error","Born after mother was " + absOldestMother);
                                  }
                                  else {
@@ -781,7 +939,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                                        createIssue(i,"Anomaly","Born before father was " + usualYoungestFather);
                                     }
                                  }
-                                 if (actualBirth[i] > fActualBirthYear + absOldestFather) {
+                                 if ((actualBirth[i] > fActualBirthYear + absOldestFather) && proxyBirthInd[i]==0) {
                                     createIssue(i,"Error","Born after father was " + absOldestFather);
                                  }
                                  else {
@@ -791,10 +949,20 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                                  }
                               }
                               if (mLatestDeathYear!=null && actualBirth[i] > mLatestDeathYear) {
-                                 createIssue(i,"Error","Born after mother died");
+                                 if (proxyBirthInd[i]==0) {
+                                    createIssue(i,"Error","Born after mother died");
+                                 }
+                                 else {
+                                    createIssue(i,"Anomaly","Christened/baptized after mother died");
+                                 }   
                               }
                               if (fLatestDeathYear!=null && actualBirth[i] > fLatestDeathYear + 1) {
-                                 createIssue(i,"Error","Born more than 1 year after father died");
+                                 if (proxyBirthInd[i]==0) {
+                                    createIssue(i,"Error","Born more than 1 year after father died");
+                                 }
+                                 else {
+                                    createIssue(i,"Anomaly","Christened/baptized more than 1 year after father died");
+                                 }   
                               }
                            }
                         }
@@ -965,8 +1133,23 @@ public class AnalyzeDataQuality extends StructuredDataParser {
          "WHERE t.dqa_namespace IN (109,111) AND p.dqa_page_id IS NULL OR p.dqa_action_by = \"unidentified\" " +
          "AND t.dqa_type = \"Anomaly\") b " + 
       "ON dqi_job_id = dqa_job_id AND dqi_page_id = dqa_page_id AND dqi_category = \"Anomaly\" AND dqi_issue_desc = dqa_desc " +
-      "ORDER BY dq_namespace, CASE dq_namespace WHEN 108 THEN CONCAT(SUBSTRING_INDEX(SUBSTRING_INDEX(dq_title, '_', 2), '_', -1), " + 
-         "'_', SUBSTRING_INDEX(dq_title, '_', 1), '_', SUBSTRING_INDEX(dq_title, '_', -1)) ELSE dq_title END, dqi_issue_desc;";
+      "ORDER BY dq_namespace, " +
+         "CASE dq_namespace WHEN 108 THEN CONCAT(" +
+            "SUBSTRING(dq_title, POSITION('_' IN dq_title)+1, LENGTH(dq_title)-POSITION('_' IN dq_title)-LENGTH(SUBSTRING_INDEX(dq_title,'_',-1))-1)," + // surname
+            "',_', SUBSTRING_INDEX(dq_title, '_', 1)," + // given
+            "'_', SUBSTRING_INDEX(dq_title, '_', -1)) " + // number
+         "ELSE CONCAT(" +
+            "SUBSTRING(dq_title, POSITION('_' IN dq_title)+1, POSITION('_and_' IN dq_title)-POSITION('_' IN dq_title)-1)," + // husband surnam
+            "',_', SUBSTRING_INDEX(dq_title, '_', 1), '_and_'," + // husband given
+            "SUBSTRING(SUBSTRING(dq_title, POSITION('_and_' IN dq_title)+5, LENGTH(dq_title)), " +
+	            "POSITION('_' IN SUBSTRING(dq_title, POSITION('_and_' IN dq_title)+5, LENGTH(dq_title)))+1, " +
+               "LENGTH(SUBSTRING(dq_title, POSITION('_and_' IN dq_title)+5, LENGTH(dq_title))) - " +
+               "POSITION('_' IN SUBSTRING(dq_title, POSITION('_and_' IN dq_title)+5, LENGTH(dq_title))) - " +
+               "LENGTH(SUBSTRING_INDEX(dq_title, '_', -1))-1)," + // wife surname
+            "',_', SUBSTRING_INDEX(SUBSTRING(dq_title, POSITION('_and_' IN dq_title)+5, LENGTH(dq_title)),'_', 1)," + // wife given 
+            "'_', SUBSTRING_INDEX(dq_title, '_', -1)) " + // number
+         "END, dqi_issue_desc;";
+
       try (Statement stmt = sqlCon.createStatement()) {
          stmt.executeUpdate(ver);
          commitSql();
@@ -1029,8 +1212,9 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                     "ORDER BY dq_page_id;";  
 
       /* Statistics queries */                           
-      String total = "SELECT COUNT(*) AS count FROM dq_page_analysis " +
-                     "WHERE dq_job_id = " + jobId + " AND dq_namespace = 108;";
+      String total = "SELECT dq_namespace, COUNT(*) AS count FROM dq_page_analysis " +
+                     "WHERE dq_job_id = " + jobId + 
+                     " GROUP BY dq_namespace;";
       String living = "SELECT COUNT(*) AS count FROM dq_page " +
                       "WHERE dq_job_id = " + jobId + " AND dq_namespace = 108 " +
                       "AND dq_latest_birth_year > " + livingTh + " " + 
@@ -1046,9 +1230,15 @@ public class AnalyzeDataQuality extends StructuredDataParser {
       String chron = "SELECT COUNT(*) AS count FROM dq_page " +
                      "WHERE dq_job_id = " + jobId + " AND dq_namespace = 108 " +
                      "AND dq_latest_birth_year < dq_earliest_birth_year;";                      
-      String anomaly = "SELECT dqi_category, dqi_issue_desc, COUNT(*) AS count FROM dq_issue_capture " +
+      String issue = "SELECT dqi_category, dqi_issue_desc, COUNT(*) AS count FROM dq_issue " +
                      "WHERE dqi_job_id = " + jobId + 
+                     " AND dqi_verified_by is null" +    // don't count verified anomalies
                      " GROUP BY dqi_category, dqi_issue_desc ORDER BY dqi_category, dqi_issue_desc;";
+      String impact = "SELECT dq_namespace, COUNT(*) AS count FROM " +
+                     "(SELECT DISTINCT dq_namespace, dqi_page_id FROM dq_issue " +
+                     "INNER JOIN dq_page ON dqi_page_id = dq_page_id AND dqi_job_id = dq_job_id " +
+                     "WHERE dqi_job_id = " + jobId + " AND dqi_category IN ('Anomaly', 'Error') AND dqi_verified_by IS NULL) d " +
+                     "GROUP BY dq_namespace;";
 
       /* Statement to write statistics to the stats table */               
       String stats = "INSERT INTO dq_stats (dqs_job_id, dqs_date, dqs_category, dqs_issue_desc, dqs_count) " +
@@ -1061,11 +1251,11 @@ public class AnalyzeDataQuality extends StructuredDataParser {
 
          // Output counts of pages and issues
          rs = stmt.executeQuery(total);
-         if (rs.next()) {
+         while (rs.next()) {
             try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
                insertStmt.setString(1,effDate);
                insertStmt.setString(2,"Growth");
-               insertStmt.setString(3,"Person pages");
+               insertStmt.setString(3,getInteger(rs,"dq_namespace")==108 ? "Person pages" : "Family pages");
                insertStmt.setInt(4,rs.getInt("count"));
                insertStmt.executeUpdate();
                commitSql();
@@ -1140,7 +1330,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
          }
          rs.close();
 
-         rs = stmt.executeQuery(anomaly);
+         rs = stmt.executeQuery(issue);
          while (rs.next()) {
             try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
                insertStmt.setString(1,effDate);
@@ -1155,9 +1345,50 @@ public class AnalyzeDataQuality extends StructuredDataParser {
             }
          }
          rs.close();
+
+         rs = stmt.executeQuery(impact);
+         while (rs.next()) {
+            try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
+               insertStmt.setString(1,effDate);
+               insertStmt.setString(2,"Impact");
+               insertStmt.setString(3,getInteger(rs,"dq_namespace")==108 ? "Person pages with error/anomaly" : "Family pages with error/anomaly");
+               insertStmt.setInt(4,rs.getInt("count"));
+               insertStmt.executeUpdate();
+               commitSql();
+            } catch (SQLException e) {
+               rollbackSql();
+               e.printStackTrace();
+            }
+         }
+         rs.close();
       } catch (SQLException e) {
          e.printStackTrace();
       }
+
+      // Counts of missing given name and surname (counted during round 1)
+      try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
+         insertStmt.setString(1,effDate);
+         insertStmt.setString(2,"Incomplete");
+         insertStmt.setString(3,"Given name unknown");
+         insertStmt.setInt(4,givenUnknown);
+         insertStmt.executeUpdate();
+         commitSql();
+      } catch (SQLException e) {
+         rollbackSql();
+         e.printStackTrace();
+      }
+      try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
+         insertStmt.setString(1,effDate);
+         insertStmt.setString(2,"Incomplete");
+         insertStmt.setString(3,"Surname unknown");
+         insertStmt.setInt(4,surnameUnknown);
+         insertStmt.executeUpdate();
+         commitSql();
+      } catch (SQLException e) {
+         rollbackSql();
+         e.printStackTrace();
+      }
+
    }
 
    private void purgeAnalysis() {
@@ -1439,6 +1670,8 @@ public class AnalyzeDataQuality extends StructuredDataParser {
       aTemplates.put("UnusuallyYoungHusband", "Husband younger than " + minMarriageAge + " at marriage");
       aTemplates.put("UnusuallyOldWife", "Wife older than " + maxMarriageAge + " at marriage");
       aTemplates.put("UnusuallyOldHusband", "Husband older than " + maxMarriageAge + " at marriage");
+      aTemplates.put("BaptismAfterMothersDeath", "Christened/baptized after mother died");
+      aTemplates.put("BaptismWellAfterFathersDeath", "Christened/baptized more than 1 year after father died");
 
       // By default, go from round 1 to round 4, but user can override (for restartability or extension)
       round = 1;
@@ -1478,6 +1711,10 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                }
                logger.info("Job #" + jobId + " round 1 ended");
                round++;
+            }
+            if (endRound==1) {
+               self.updateVerifiedBy();
+               self.updateDeferredBy();
             }
    
             // Subsequent rounds to derive dates based on dates in immediate family. Create indexes if missing.
