@@ -5,10 +5,11 @@ import nu.xom.*;
 import java.io.IOException;
 import java.io.StringReader;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public abstract class StructuredDataParser implements WikiPageParser {
-   protected static final Logger logger = Logger.getLogger("org.werelate.parser");
+   protected static final Logger logger = LogManager.getLogger("org.werelate.parser");
 
    public static final String XML_HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
 

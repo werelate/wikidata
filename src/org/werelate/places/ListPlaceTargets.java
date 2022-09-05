@@ -3,7 +3,8 @@ package org.werelate.places;
 import org.werelate.parser.StructuredDataParser;
 import org.werelate.parser.WikiReader;
 import org.werelate.utils.Util;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.util.Map;
@@ -15,7 +16,7 @@ import nu.xom.ParsingException;
 
 public class ListPlaceTargets extends StructuredDataParser
 {
-   private static Logger logger = Logger.getLogger("org.werelate.places");
+   private static Logger logger = LogManager.getLogger("org.werelate.places");
    private static final Pattern REDIRECT_PATTERN = Pattern.compile("#redirect\\s*\\[\\[(.*?)\\]\\]", Pattern.CASE_INSENSITIVE);
 
    private Map<String,String> placeTargets;

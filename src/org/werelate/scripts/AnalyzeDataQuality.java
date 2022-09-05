@@ -28,7 +28,7 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.sql.*;
 import java.sql.Connection;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
 import java.util.HashMap;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -385,7 +385,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                   }
                }
                if (eventOrderError) {
-                  createIssue("Error","Event(s) out of order", pageId);
+                  createIssue("Error","Events out of order", pageId);
                }
 
                // Living event or death more than 125 years after birth
@@ -607,6 +607,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
       String query;
 
       System.out.print("Processing round " + round);
+
       /* In round 2, process all rows to find inter-generational errors. 
          In subsequent rounds, process rows without a birth year or where there is a significant gap 
          between earliest and latest birth year. */

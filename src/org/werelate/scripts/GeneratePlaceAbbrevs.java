@@ -1,6 +1,7 @@
 package org.werelate.scripts;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.utils.Util;
 
 import java.io.*;
@@ -24,7 +25,7 @@ public class GeneratePlaceAbbrevs {
 
    private static Set<String> linkedPlaces = new HashSet<String>();
 
-   protected static final Logger logger = Logger.getLogger("org.werelate.GeneratePlaceAbbrevs");
+   protected static final Logger logger = LogManager.getLogger("org.werelate.GeneratePlaceAbbrevs");
 
    private static class Place {
       String id;

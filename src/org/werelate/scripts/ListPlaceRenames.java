@@ -1,7 +1,8 @@
 package org.werelate.scripts;
 
 import nu.xom.ParsingException;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.parser.StructuredDataParser;
 import org.werelate.parser.WikiReader;
 import org.werelate.utils.Util;
@@ -13,7 +14,7 @@ import java.util.regex.Pattern;
 
 public class ListPlaceRenames extends StructuredDataParser
 {
-   private static Logger logger = Logger.getLogger("org.werelate.scripts");
+   private static Logger logger = LogManager.getLogger("org.werelate.scripts");
 
    private Map<String,String> placeTargets;
 

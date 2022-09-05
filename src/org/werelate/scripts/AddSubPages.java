@@ -1,6 +1,7 @@
 package org.werelate.scripts;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.editor.PageEditor;
 
 import java.io.*;
@@ -9,7 +10,7 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 
 public class AddSubPages {
-   private static Logger logger = Logger.getLogger("org.werelate.scripts");
+   private static Logger logger = LogManager.getLogger("org.werelate.scripts");
 
    private PageEditor editor;
    private String title;

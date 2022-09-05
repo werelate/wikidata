@@ -12,12 +12,12 @@ import java.io.IOException;
 
 import org.werelate.utils.MultiMap;
 import org.werelate.parser.WikiPageParser;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class WP2WRTitleParser implements WikiPageParser {
-   private static final Logger logger = Logger.getLogger("org.werelate.wikipedia");
+   private static final Logger logger = LogManager.getLogger("org.werelate.wikipedia");
 
-   //private static Logger logger = Logger.getLogger(WikiReader.class);
    public static Pattern pCopyWikipedia = Pattern.compile(
            "\\{\\{\\s*copy-wikipedia\\s*\\|\\s*(.+?)\\s*(#\\s*(.+?)\\s*)?\\}\\}",
            Pattern.CASE_INSENSITIVE);

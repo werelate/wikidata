@@ -1,7 +1,7 @@
 package org.werelate.source;
 
-import org.apache.log4j.Logger;
-import org.apache.log4j.PropertyConfigurator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.utils.Util;
 import org.werelate.parser.StructuredDataParser;
 import org.werelate.parser.WikiReader;
@@ -28,7 +28,7 @@ import nu.xom.Element;
 import nu.xom.Elements;
 
 public class MappingVerifier{
-   private static Logger logger = Logger.getLogger("org.werelate.source");
+   private static Logger logger = LogManager.getLogger("org.werelate.source");
 
    private FileWriter errPlaceWriter;
    private FileWriter placeChangesWriter;

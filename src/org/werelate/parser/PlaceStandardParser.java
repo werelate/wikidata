@@ -3,7 +3,8 @@ package org.werelate.parser;
 import org.werelate.places.PlaceStandard;
 import org.werelate.places.Place;
 import org.werelate.utils.Util;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import nu.xom.Element;
 import nu.xom.Document;
 import nu.xom.ParsingException;
@@ -14,7 +15,7 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 public class PlaceStandardParser extends StructuredDataParser {
-   private static Logger logger = Logger.getLogger("org.werelate.places");
+   private static Logger logger = LogManager.getLogger("org.werelate.places");
 
    public static final String NAME = "name";
    public static final String PLACE = "place";
