@@ -16,8 +16,8 @@
  */
 package org.werelate.scripts;
 
-import org.apache.log4j.Logger;
-import org.apache.log4j.PropertyConfigurator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.utils.Util;
 import org.werelate.editor.PageEditor;
 
@@ -36,7 +36,7 @@ import java.io.FileReader;
 import java.io.BufferedReader;
 
 public class RedirectEditor {
-   private static Logger logger = Logger.getLogger("org.werelate.redirect");
+   private static Logger logger = LogManager.getLogger("org.werelate.redirect");
    private static final Pattern REDIRECT_PATTERN1 = Pattern.compile("#redirect\\s*\\[\\[Family:(.*?)\\]\\]", Pattern.CASE_INSENSITIVE);
    private static final Pattern RELATEDBOX_PATTERN = Pattern.compile("<textarea[^>]*?related[^>]*?>(.*?)</textarea>", Pattern.DOTALL);
    private static final Pattern TEXTBOX1_PATTERN = Pattern.compile("<textarea[^>]*?wpTextbox1[^>]*?>(.*?)</textarea>", Pattern.DOTALL);

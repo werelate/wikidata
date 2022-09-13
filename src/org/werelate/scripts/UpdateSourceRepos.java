@@ -1,6 +1,7 @@
 package org.werelate.scripts;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.editor.PageEditor;
 import org.werelate.utils.Util;
 
@@ -14,7 +15,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 
 public class UpdateSourceRepos {
-   private static Logger logger = Logger.getLogger("org.werelate.scripts");
+   private static Logger logger = LogManager.getLogger("org.werelate.scripts");
    private static final Pattern AUTHOR_PATTERN = Pattern.compile("<textarea [^>]*?name=\"authors\"[^>]*>(.*?)</textarea>", Pattern.DOTALL);
    private static final Pattern PLACE_PATTERN = Pattern.compile("<textarea [^>]*?name=\"places\"[^>]*>(.*?)</textarea>", Pattern.DOTALL);
    private static final Pattern SURNAME_TEXTBOX = Pattern.compile("<textarea [^>]*?name=\"surnames\"[^>]*>(.*?)</textarea>", Pattern.DOTALL);

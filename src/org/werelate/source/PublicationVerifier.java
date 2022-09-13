@@ -1,6 +1,7 @@
 package org.werelate.source;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.utils.Util;
 
 import java.util.regex.Pattern;
@@ -14,7 +15,7 @@ import java.io.BufferedReader;
 import nu.xom.ParsingException;
 
 public class PublicationVerifier{
-   private static Logger logger = Logger.getLogger("org.werelate.source");
+   private static Logger logger = LogManager.getLogger("org.werelate.source");
 
    private FileWriter errPubWriter;
    private FileWriter finalPubWriter;

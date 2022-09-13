@@ -1,6 +1,7 @@
 package org.werelate.places;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.editor.PageEditor;
 import org.werelate.utils.Util;
 
@@ -12,7 +13,7 @@ import java.io.FileReader;
 import java.io.BufferedReader;
 
 public class PlaceEditor {
-   private static Logger logger = Logger.getLogger("org.werelate.names");
+   private static Logger logger = LogManager.getLogger("org.werelate.names");
    private static final Pattern ALTERNATE_NAMES_BOX = Pattern.compile("<textarea[^>]*?name=\"alternateNames\"[^>]*>(.*?)</textarea>", Pattern.DOTALL);
    private static final Pattern SEE_ALSO_BOX = Pattern.compile("<textarea[^>]*?name=\"seeAlso\"[^>]*>(.*?)</textarea>", Pattern.DOTALL);
    private static final Pattern ALSO_LOCATED_IN_BOX = Pattern.compile("<textarea[^>]*?name=\"alsoLocatedIn\"[^>]*>(.*?)</textarea>", Pattern.DOTALL);

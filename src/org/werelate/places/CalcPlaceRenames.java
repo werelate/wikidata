@@ -1,6 +1,7 @@
 package org.werelate.places;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -11,7 +12,7 @@ import java.util.HashMap;
 
 public class CalcPlaceRenames
 {
-   private static Logger logger = Logger.getLogger("org.werelate.places");
+   private static Logger logger = LogManager.getLogger("org.werelate.places");
 
    private static String getPlaceName(String place, Map<String,String> placeTargets) {
       // split place name from located-in place name

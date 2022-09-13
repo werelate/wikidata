@@ -1,7 +1,8 @@
 package org.werelate.wikipedia;
 
 import org.apache.commons.cli.*;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.parser.WikiReader;
 import org.werelate.parser.WikiPageParser;
 import org.werelate.utils.MultiMap;
@@ -15,7 +16,7 @@ import nu.xom.ParsingException;
 
 public class WP2WR
 {
-   private static final Logger logger = Logger.getLogger("org.werelate.wikipedia");
+   private static final Logger logger = LogManager.getLogger("org.werelate.wikipedia");
 
    private static void outputFile(MultiMap<String,String> wp2t, MultiMap<String,String> t2wr, String filename) throws FileNotFoundException
    {

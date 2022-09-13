@@ -1,7 +1,8 @@
 package org.werelate.parser;
 
 import nu.xom.*;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.utils.Util;
 
 import java.io.IOException;
@@ -13,7 +14,7 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 public class WikiReader extends NodeFactory {
-   private static Logger logger = Logger.getLogger(WikiReader.class);
+   private static Logger logger = LogManager.getLogger(WikiReader.class);
 
    private Nodes EMPTY = new Nodes();
    private boolean inTitle;

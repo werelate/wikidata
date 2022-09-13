@@ -9,7 +9,8 @@ java -Xmx1280m \
 ../classes:\
 ../../werelate-gedcom/classes:\
 ../conf:\
-../lib/log4j-1.3alpha-7.jar:\
+../lib/log4j-api-2.12.4.jar:\
+../lib/log4j-core-2.12.4.jar:\
 ../lib/xom-1.1b5.jar:\
 ../lib/icu4j_3_4.jar:\
 ../lib/commons-codec-1.3.jar:\

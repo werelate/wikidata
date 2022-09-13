@@ -1,7 +1,8 @@
 package org.werelate.duplicates;
 
 import org.apache.commons.cli.*;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.parser.WikiReader;
 import org.werelate.parser.StructuredDataParser;
 import org.werelate.utils.Util;
@@ -21,7 +22,7 @@ import nu.xom.Elements;
 
 public class ProduceFamilyDuplicates extends StructuredDataParser
 {
-   private static final Logger logger = Logger.getLogger("org.werelate.duplicates");
+   private static final Logger logger = LogManager.getLogger("org.werelate.duplicates");
 
    private static final Pattern FAMILY_NAME_PATTERN = Pattern.compile("([^ ]*)\\s+(.*?)\\s+and\\s+([^ ]*)\\s+(.*)");
    private static final Pattern PERSON_NAME_PATTERN = Pattern.compile("([^ ]*)\\s+(.*)");

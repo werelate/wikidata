@@ -1,6 +1,7 @@
 package org.werelate.wikipedia;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.parser.WikiPageParser;
 import org.werelate.utils.MultiMap;
 import org.werelate.utils.Util;
@@ -19,7 +20,7 @@ public class WikipediaUpdateParser implements WikiPageParser {
    private static final String COMMENT = "<!-- This text is copied from wikipedia. Any changes made will be " +
            "overwritten during the next update. -->";
 
-   private static Logger logger = Logger.getLogger("org.werelate.wikipedia");
+   private static Logger logger = LogManager.getLogger("org.werelate.wikipedia");
 
    private MultiMap<String, String> wp2t;
    private MultiMap<String, String> t2wr;
