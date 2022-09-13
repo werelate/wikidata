@@ -1,6 +1,7 @@
 package org.werelate.source;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.utils.Util;
 
 import java.util.regex.Pattern;
@@ -12,7 +13,7 @@ import java.io.FileReader;
 import java.io.BufferedReader;
 
 public class AuthorVerifier{
-   private static Logger logger = Logger.getLogger("org.werelate.source");
+   private static Logger logger = LogManager.getLogger("org.werelate.source");
 
 private FileWriter authorWriter;
    private static final Pattern MAINAUTHOR = Pattern.compile("<Main Author>([^<]+)</Main Author>");

@@ -1,7 +1,8 @@
 package org.werelate.wikipedia;
 
 import org.apache.commons.cli.*;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.parser.WikiReader;
 import org.werelate.parser.WikiPageParser;
 import org.werelate.utils.CountsCollector;
@@ -18,7 +19,7 @@ import nu.xom.ParsingException;
 
 public class AnalyzeWPPeople implements WikiPageParser
 {
-   private static final Logger logger = Logger.getLogger("org.werelate.wikipedia");
+   private static final Logger logger = LogManager.getLogger("org.werelate.wikipedia");
    public static Pattern pBirthsDeaths = Pattern.compile("\\[\\[\\s*Category:(\\d{3,4})s?\\s*(births|deaths)\\s*(\\]|\\|)", Pattern.CASE_INSENSITIVE);
    public static Pattern pWpCategory = Pattern.compile("\\[\\[\\s*Category:([^\\]\\|]+)", Pattern.CASE_INSENSITIVE);
    public static Pattern pSpouseParm = Pattern.compile("\\|\\s*spouse\\s*=", Pattern.CASE_INSENSITIVE);

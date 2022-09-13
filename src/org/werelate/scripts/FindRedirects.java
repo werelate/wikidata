@@ -1,7 +1,7 @@
 package org.werelate.scripts;
 
-import org.apache.log4j.Logger;
-import org.apache.log4j.PropertyConfigurator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.utils.Util;
 import org.werelate.parser.StructuredDataParser;
 import org.werelate.parser.WikiReader;
@@ -21,7 +21,7 @@ import nu.xom.Element;
 import nu.xom.Elements;
 
 public class FindRedirects  extends StructuredDataParser {
-   private static Logger logger = Logger.getLogger("org.werelate.redirect");
+   private static Logger logger = LogManager.getLogger("org.werelate.redirect");
    private static final Pattern REDIRECT_PATTERN1 = Pattern.compile("#redirect\\s*\\[\\[(.*?)\\]\\]", Pattern.CASE_INSENSITIVE);
    private Hashtable<String,String> Redirects = new Hashtable<String,String>(100000);
 

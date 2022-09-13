@@ -27,11 +27,12 @@ import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.ThreadedRefreshHandler;
 import com.gargoylesoftware.htmlunit.Page;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class BasicCrawler {
 	protected static String PROGRAM_NAME = "org.werelate.BasicCrawler";
-	protected static Logger logger = Logger.getLogger(BasicCrawler.class);
+	protected static Logger logger = LogManager.getLogger(BasicCrawler.class);
 	
 	private static int delay; // The delay between page fetches in seconds
 	private long lastPageRequestTime;

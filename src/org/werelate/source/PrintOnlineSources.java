@@ -3,7 +3,8 @@ package org.werelate.source;
 import org.werelate.utils.CountsCollector;
 import org.werelate.parser.StructuredDataParser;
 import org.werelate.parser.WikiReader;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.util.Set;
@@ -14,7 +15,7 @@ import nu.xom.Document;
 import nu.xom.Nodes;
 
 public class PrintOnlineSources  extends StructuredDataParser {
-   private static Logger logger = Logger.getLogger("org.werelate.source");
+   private static Logger logger = LogManager.getLogger("org.werelate.source");
    private static String[] SKIP = {"www.familysearch.org","boards.ancestry.com","genforum.genealogy.com","worldconnect.rootsweb.com",
                                    "worldconnect.genealogy.rootsweb.com","www.cyndislist.com","familytreemaker.genealogy.com","groups.yahoo.com",
                                    "groups.msn.com"};

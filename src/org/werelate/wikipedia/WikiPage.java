@@ -1,6 +1,7 @@
 package org.werelate.wikipedia;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.utils.Util;
 
 import java.util.regex.Pattern;
@@ -8,7 +9,7 @@ import java.util.regex.Matcher;
 import java.util.*;
 
 public class WikiPage {
-   private static final Logger logger = Logger.getLogger("org.werelate.wikipedia");
+   private static final Logger logger = LogManager.getLogger("org.werelate.wikipedia");
 
    // match category links
    private static final Pattern CATEGORY_PATTERN = Pattern.compile("\\[\\[[cC]ategory:([^\\|\\]]+)(.*?)\\]", Pattern.DOTALL);

@@ -1,6 +1,7 @@
 package org.werelate.wikipedia;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.commons.cli.*;
 import org.werelate.parser.WikiReader;
 import org.werelate.utils.MultiMap;
@@ -19,7 +20,7 @@ import nu.xom.ParsingException;
 public class WikipediaUpdate {
    public static final int UPDATE_DELAY_MILLIS = 3000;
 
-   private static final Logger logger = Logger.getLogger("org.werelate.wikipedia");
+   private static final Logger logger = LogManager.getLogger("org.werelate.wikipedia");
 
    public static void main(String [] args) {
       Options opt = new Options();

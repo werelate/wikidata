@@ -11,10 +11,11 @@ import java.io.PrintWriter;
 import java.sql.*;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class FindDoubleClickDuplicates  extends StructuredDataParser {
-   private static Logger logger = Logger.getLogger("org.werelate.redirect");
+   private static Logger logger = LogManager.getLogger("org.werelate.redirect");
    private static final int WINDOW_SIZE = 3;
 
    private List<String> titleQueue;

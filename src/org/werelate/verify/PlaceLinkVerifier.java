@@ -1,6 +1,7 @@
 package org.werelate.verify;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.parser.StructuredDataParser;
 import org.werelate.parser.WikiReader;
 import org.werelate.utils.Util;
@@ -19,7 +20,7 @@ import nu.xom.Element;
 import nu.xom.Elements;
 
 public class PlaceLinkVerifier extends StructuredDataParser {
-   private static Logger logger = Logger.getLogger("org.werelate.verify");
+   private static Logger logger = LogManager.getLogger("org.werelate.verify");
    private static final Pattern REDIRECT_PATTERN = Pattern.compile("\\s*#redirect\\s*\\[\\[(.*?)\\]\\]", Pattern.CASE_INSENSITIVE);
    private Map<String,Collection<String>> containsLinks = new HashMap<String,Collection<String>>(100000);
    private Map<String,Collection<String>> isContainedLinks = new HashMap<String,Collection<String>>(100000);

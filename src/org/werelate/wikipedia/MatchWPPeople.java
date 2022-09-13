@@ -3,7 +3,8 @@ package org.werelate.wikipedia;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.httpclient.HttpClient;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.utils.Util;
 
 import java.io.*;
@@ -16,7 +17,7 @@ import com.hp.hpl.sparta.Element;
 
 public class MatchWPPeople
 {
-   private static final Logger logger = Logger.getLogger("org.werelate.wikipedia");
+   private static final Logger logger = LogManager.getLogger("org.werelate.wikipedia");
 
    private static final float MATCH_THRESHOLD = 2.75f;
 

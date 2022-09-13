@@ -1,7 +1,8 @@
 package org.werelate.editor;
 
 import org.apache.commons.httpclient.cookie.CookiePolicy;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.httpclient.HttpMethodBase;
@@ -37,7 +38,7 @@ public class PageEditor {
    private static int MAX_RETRIES = 5;
    private static int RETRY_WAIT_MILLIS = 20000;
    private static int TIMEOUT_MILLIS = 60000;
-   private static Logger logger = Logger.getRootLogger();
+   private static Logger logger = LogManager.getRootLogger();
    private static final int BUF_SIZE = 32 * 1024;
    private static final int MAX_BUF_SIZE = 64 * 1024 * 1024;
 
