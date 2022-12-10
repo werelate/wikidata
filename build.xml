@@ -34,7 +34,7 @@
     <pathelement location="${basedir}/lib/xercesImpl-2.8.1.jar"/>
     <pathelement location="${basedir}/lib/xml-apis-1.3.04.jar"/>
     <pathelement location="${basedir}/lib/xom-1.1b5.jar"/>
-    <pathelement location="${basedir}/../werelate-gedcom/classes"/>    <!-- added Apr 2022 by Janet Bjorndahl -->
+    <pathelement location="${basedir}/lib/shared.jar"/>    <!-- added Dec 2022 by Janet Bjorndahl -->
   </path>
 
   <!-- Paths -->
