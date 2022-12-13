@@ -18,6 +18,7 @@ package org.werelate.scripts;
 import org.werelate.parser.StructuredDataParser;
 import org.werelate.parser.WikiReader;
 import org.werelate.utils.Util;
+import org.werelate.util.SharedUtils;
 import org.werelate.dq.PersonDQAnalysis;
 import org.werelate.dq.FamilyDQAnalysis;
 
@@ -127,7 +128,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                   // Write issues to the db
                   String[][] issues = personDQAnalysis.getIssues();
                   for (int k=0; issues[k][0] != null; k++) {
-                     createIssue(issues[k][0], issues[k][1], (issues[k][2].equals("Person") ? 108 : 110), SqlTitle(issues[k][3]));
+                     createIssue(issues[k][0], issues[k][1], (issues[k][2].equals("Person") ? 108 : 110), SharedUtils.SqlTitle(issues[k][3]));
                   }
 
                   // Determine whether a name is missing and count accordingly. 
@@ -173,7 +174,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                   elms = root.getChildElements("child_of_family");
                   if (elms.size() > 0) {
                      elm = elms.get(0);
-                     parentPage = SqlTitle(elm.getAttributeValue("title"));
+                     parentPage = SharedUtils.SqlTitle(elm.getAttributeValue("title"));
                   }
                }
 
@@ -189,25 +190,25 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                   // Write issues to the db
                   String[][] issues = familyDQAnalysis.getIssues();
                   for (int k=0; issues[k][0] != null; k++) {
-                     createIssue(issues[k][0], issues[k][1], (issues[k][2].equals("Person") ? 108 : 110), SqlTitle(issues[k][3]));
+                     createIssue(issues[k][0], issues[k][1], (issues[k][2].equals("Person") ? 108 : 110), SharedUtils.SqlTitle(issues[k][3]));
                   }                              
 
                   // Get page titles of husband and wife for subsequent rounds
                   elms = root.getChildElements("husband");
                   if (elms.size() > 0) {
                      elm = elms.get(0);
-                     husbandPage = SqlTitle(elm.getAttributeValue("title"));
+                     husbandPage = SharedUtils.SqlTitle(elm.getAttributeValue("title"));
                   }
                   elms = root.getChildElements("wife");
                   if (elms.size() > 0) {
                      elm = elms.get(0);
-                     wifePage = SqlTitle(elm.getAttributeValue("title"));
+                     wifePage = SharedUtils.SqlTitle(elm.getAttributeValue("title"));
                   }
                }
             }
 
             // Prepare line for writing to the database
-            rowValue[rows++] = " (" + jobId + "," + pageId + "," + ns + ",\"" + SqlTitle(splitTitle[1]) +
+            rowValue[rows++] = " (" + jobId + "," + pageId + "," + ns + ",\"" + SharedUtils.SqlTitle(splitTitle[1]) +
                       "\"," + earliestBirth + "," + latestBirth + "," + 
                      latestDeath + "," + earliestMarriage + "," + latestMarriage + "," +
                      (parentPage==null ? "null" : "\"" + parentPage + "\"") + "," + 
@@ -368,7 +369,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
          }
       }
       if (action) {
-         actionRowValue[actionRows++] = " (" + jobId + "," + pageId + "," + ns + ",\"" + SqlTitle(title) + "\",\"" + type + "\",\"" + 
+         actionRowValue[actionRows++] = " (" + jobId + "," + pageId + "," + ns + ",\"" + SharedUtils.SqlTitle(title) + "\",\"" + type + "\",\"" + 
                desc + "\",\"" + (aUser=="" ? "unidentified" : aUser) + "\")";
       }
       if (actionRows==1000) {
@@ -386,7 +387,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
          }
       }
       if (!dUser.equals("")) {         // Track deferral request only if user(s) is identified
-         actionRowValue[actionRows++] = " (" + jobId + "," + pageId + "," + ns + ",\"" + SqlTitle(title) + 
+         actionRowValue[actionRows++] = " (" + jobId + "," + pageId + "," + ns + ",\"" + SharedUtils.SqlTitle(title) + 
                "\",\"Page\",\"Deferral\",\"" + dUser + "\")";
 
       }
@@ -445,11 +446,11 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                rows=0;
                while (rs.next()) {
                   pageId[rows] = rs.getInt("dq_page_id");
-                  pageTitle[rows] = SqlTitle(rs.getString("dq_title"));
+                  pageTitle[rows] = SharedUtils.SqlTitle(rs.getString("dq_title"));
                   earliestBirth[rows] = getInteger(rs, "dq_earliest_birth_year");
                   latestBirth[rows] = getInteger(rs, "dq_latest_birth_year");
                   latestDeath[rows] = getInteger(rs, "dq_latest_death_year");
-                  parentPage[rows] = SqlTitle(rs.getString("dq_parent_page"));
+                  parentPage[rows] = SharedUtils.SqlTitle(rs.getString("dq_parent_page"));
                   birthCalc[rows] = rs.getString("dq_birth_calc");
                   latestRoundId[rows] = 0;  // reset for this group of records
                   rows++;
@@ -527,8 +528,8 @@ public class AnalyzeDataQuality extends StructuredDataParser {
       try (PreparedStatement stmt = sqlCon.prepareStatement(childQuery)) {
          try (ResultSet rs = stmt.executeQuery()) {
             while(rs.next()) {
-               String selfPageTitle = SqlTitle(rs.getString("dq_title"));
-               String cPageTitle = SqlTitle(rs.getString("child_dq_title"));
+               String selfPageTitle = SharedUtils.SqlTitle(rs.getString("dq_title"));
+               String cPageTitle = SharedUtils.SqlTitle(rs.getString("child_dq_title"));
                String parent = rs.getString("parent");
                Integer cEarliestBirth = getInteger(rs, "child_dq_earliest_birth_year");
                Integer cLatestBirth = getInteger(rs, "child_dq_latest_birth_year");
@@ -601,10 +602,10 @@ public class AnalyzeDataQuality extends StructuredDataParser {
          try (ResultSet rs = stmt.executeQuery()) {
             while(rs.next()) {
                int familyPageId = rs.getInt("family_page_id");  /* check to see if still needed after refactoring */
-               String familyTitle = SqlTitle(rs.getString("family_title"));
-               String selfRole = SqlTitle(rs.getString("role"));
-               String selfPageTitle = SqlTitle(rs.getString("dq_title"));
-               String spousePageTitle = SqlTitle(rs.getString("spouse_dq_title"));
+               String familyTitle = SharedUtils.SqlTitle(rs.getString("family_title"));
+               String selfRole = SharedUtils.SqlTitle(rs.getString("role"));
+               String selfPageTitle = SharedUtils.SqlTitle(rs.getString("dq_title"));
+               String spousePageTitle = SharedUtils.SqlTitle(rs.getString("spouse_dq_title"));
                Integer earliestMarriageYear = getInteger(rs, "dq_earliest_marriage_year");
                Integer latestMarriageYear = getInteger(rs, "dq_latest_marriage_year");
                Integer sEarliestBirth = getInteger(rs, "spouse_dq_earliest_birth_year");
@@ -672,9 +673,9 @@ public class AnalyzeDataQuality extends StructuredDataParser {
          try (PreparedStatement stmt = sqlCon.prepareStatement(parQuery)) {
             try (ResultSet rs = stmt.executeQuery()) {
                while(rs.next()) {
-                  String parPageTitle = SqlTitle(rs.getString("dq_parent_page"));
-                  String fPageTitle = SqlTitle(rs.getString("father_page"));
-                  String mPageTitle = SqlTitle(rs.getString("mother_page"));
+                  String parPageTitle = SharedUtils.SqlTitle(rs.getString("dq_parent_page"));
+                  String fPageTitle = SharedUtils.SqlTitle(rs.getString("father_page"));
+                  String mPageTitle = SharedUtils.SqlTitle(rs.getString("mother_page"));
                   Integer parEarliestMarriageYear = getInteger(rs, "dq_earliest_marriage_year");
                   Integer parLatestMarriageYear = getInteger(rs, "dq_latest_marriage_year");
                   Integer fEarliestBirthYear = getInteger(rs, "father_dq_earliest_birth_year");
@@ -754,8 +755,8 @@ public class AnalyzeDataQuality extends StructuredDataParser {
          try (PreparedStatement stmt = sqlCon.prepareStatement(sibQuery)) {
             try (ResultSet rs = stmt.executeQuery()) {
                while(rs.next()) {
-                  String parPageTitle = SqlTitle(rs.getString("sibling_dq_parent_page"));
-                  String sibPageTitle = SqlTitle(rs.getString("sibling_dq_title"));
+                  String parPageTitle = SharedUtils.SqlTitle(rs.getString("sibling_dq_parent_page"));
+                  String sibPageTitle = SharedUtils.SqlTitle(rs.getString("sibling_dq_title"));
                   Integer sEarliestBirthYear = getInteger(rs, "sibling_dq_earliest_birth_year");
                   Integer sLatestBirthYear = getInteger(rs, "sibling_dq_latest_birth_year");
 
@@ -1360,13 +1361,6 @@ public class AnalyzeDataQuality extends StructuredDataParser {
          return null;
       }
       return Integer.valueOf(rs.getInt(field));
-   }
-
-   public static String SqlTitle(String title) {
-      if (title != null) {
-         title = title.replace(" ","_").replace("\"","\\\"").replace("'","\\\'");
-      }
-      return title;
    }
 
    // Analyze pages, determine earliest and latest birth year if missing and report errors and anomalies
