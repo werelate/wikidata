@@ -63,7 +63,8 @@ public class AnalyzeDataQuality extends StructuredDataParser {
    private static final int usualOldestFather = FamilyDQAnalysis.usualOldestFather;
    private static final int usualOldestMother = FamilyDQAnalysis.usualOldestMother;
    private static final int maxAfterParentMarriage = FamilyDQAnalysis.maxAfterParentMarriage;
-   private static final int maxSpouseGap = 25, maxSiblingGap = 25;
+   private static final int maxSpouseGap = FamilyDQAnalysis.maxSpouseGap;
+   private static final int maxSiblingGap = FamilyDQAnalysis.maxSiblingGap;
    
    // Templates for addressing issues
    private static HashMap<String, String> aTemplates = new HashMap<String, String>();
@@ -126,12 +127,9 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                   diedYoungInd = personDQAnalysis.getDiedYoungInd();
             
                   // Write issues to the db
-                  // Ignore "living" issues; whether or not the person might be living is refined in later rounds and written at the end
                   String[][] issues = personDQAnalysis.getIssues();
                   for (int k=0; issues[k][0] != null; k++) {
-                     if (!issues[k][0].equals("Living")) {
-                        createIssue(issues[k][0], issues[k][1], (issues[k][2].equals("Person") ? 108 : 110), SharedUtils.SqlTitle(issues[k][3]));
-                     }
+                     createIssue(issues[k][0], issues[k][1], (issues[k][2].equals("Person") ? 108 : 110), SharedUtils.SqlTitle(issues[k][3]));
                   }
 
                   // Determine whether a name is missing and count accordingly. 
