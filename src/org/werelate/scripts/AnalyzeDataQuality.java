@@ -126,9 +126,12 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                   diedYoungInd = personDQAnalysis.getDiedYoungInd();
             
                   // Write issues to the db
+                  // Ignore "living" issues; whether or not the person might be living is refined in later rounds and written at the end
                   String[][] issues = personDQAnalysis.getIssues();
                   for (int k=0; issues[k][0] != null; k++) {
-                     createIssue(issues[k][0], issues[k][1], (issues[k][2].equals("Person") ? 108 : 110), SharedUtils.SqlTitle(issues[k][3]));
+                     if (!issues[k][0].equals("Living")) {
+                        createIssue(issues[k][0], issues[k][1], (issues[k][2].equals("Person") ? 108 : 110), SharedUtils.SqlTitle(issues[k][3]));
+                     }
                   }
 
                   // Determine whether a name is missing and count accordingly. 
