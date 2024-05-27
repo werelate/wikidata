@@ -55,16 +55,16 @@ public class AnalyzeDataQuality extends StructuredDataParser {
    private static int thisYear = startTime.get(Calendar.YEAR);
 
    // Assumptions for year calculations
-   private static final int usualLongestLife = FamilyDQAnalysis.usualLongestLife;
-   private static final int minMarriageAge = FamilyDQAnalysis.minMarriageAge;
-   private static final int maxMarriageAge = FamilyDQAnalysis.maxMarriageAge;
-   private static final int usualYoungestFather = FamilyDQAnalysis.usualYoungestFather;
-   private static final int usualYoungestMother = FamilyDQAnalysis.usualYoungestMother;
-   private static final int usualOldestFather = FamilyDQAnalysis.usualOldestFather;
-   private static final int usualOldestMother = FamilyDQAnalysis.usualOldestMother;
-   private static final int maxAfterParentMarriage = FamilyDQAnalysis.maxAfterParentMarriage;
-   private static final int maxSpouseGap = FamilyDQAnalysis.maxSpouseGap;
-   private static final int maxSiblingGap = FamilyDQAnalysis.maxSiblingGap;
+   private static final int USUAL_LONGEST_LIFE = FamilyDQAnalysis.USUAL_LONGEST_LIFE;
+   private static final int MIN_MARRIAGE_AGE = FamilyDQAnalysis.MIN_MARRIAGE_AGE;
+   private static final int MAX_MARRIAGE_AGE = FamilyDQAnalysis.MAX_MARRIAGE_AGE;
+   private static final int USUAL_YOUNGEST_FATHER = FamilyDQAnalysis.USUAL_YOUNGEST_FATHER;
+   private static final int USUAL_YOUNGEST_MOTHER = FamilyDQAnalysis.USUAL_YOUNGEST_MOTHER;
+   private static final int USUAL_OLDEST_FATHER = FamilyDQAnalysis.USUAL_OLDEST_FATHER;
+   private static final int USUAL_OLDEST_MOTHER = FamilyDQAnalysis.USUAL_OLDEST_MOTHER;
+   private static final int MAX_AFTER_PARENT_MARRIAGE = FamilyDQAnalysis.MAX_AFTER_PARENT_MARRIAGE;
+   private static final int MAX_SPOUSE_GAP = FamilyDQAnalysis.MAX_SPOUSE_GAP;
+   private static final int MAX_SIBLING_GAP = FamilyDQAnalysis.MAX_SIBLING_GAP;
    
    // Templates for addressing issues
    private static HashMap<String, String> aTemplates = new HashMap<String, String>();
@@ -539,23 +539,23 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                   if (selfPageTitle.equals(pageTitle[i])) {
                      /* Update calc of earliest and latest birth years */
                      if (parent.equals("mother") && cEarliestBirth!=null && 
-                           (earliestBirth[i]==null || (cEarliestBirth - usualOldestMother) > earliestBirth[i])) {
-                        earliestBirth[i] = cEarliestBirth - usualOldestMother;
+                           (earliestBirth[i]==null || (cEarliestBirth - USUAL_OLDEST_MOTHER) > earliestBirth[i])) {
+                        earliestBirth[i] = cEarliestBirth - USUAL_OLDEST_MOTHER;
                         setBirthCalc(i, "child", cPageTitle);
                      }
                      if (parent.equals("father") && cEarliestBirth!=null && 
-                           (earliestBirth[i]==null || (cEarliestBirth - usualOldestFather) > earliestBirth[i])) {
-                        earliestBirth[i] = cEarliestBirth - usualOldestFather;
+                           (earliestBirth[i]==null || (cEarliestBirth - USUAL_OLDEST_FATHER) > earliestBirth[i])) {
+                        earliestBirth[i] = cEarliestBirth - USUAL_OLDEST_FATHER;
                         setBirthCalc(i,"child", cPageTitle);
                      }
                      if (parent.equals("mother") && cLatestBirth!=null && 
-                           (latestBirth[i]==null || (cLatestBirth - usualYoungestMother) < latestBirth[i])) {
-                        latestBirth[i] = cLatestBirth - usualYoungestMother;
+                           (latestBirth[i]==null || (cLatestBirth - USUAL_YOUNGEST_MOTHER) < latestBirth[i])) {
+                        latestBirth[i] = cLatestBirth - USUAL_YOUNGEST_MOTHER;
                         setBirthCalc(i,"child", cPageTitle);
                      }
                      if (parent.equals("father") && cLatestBirth!=null && 
-                           (latestBirth[i]==null || (cLatestBirth - usualYoungestFather) < latestBirth[i])) {
-                        latestBirth[i] = cLatestBirth - usualYoungestFather;
+                           (latestBirth[i]==null || (cLatestBirth - USUAL_YOUNGEST_FATHER) < latestBirth[i])) {
+                        latestBirth[i] = cLatestBirth - USUAL_YOUNGEST_FATHER;
                         setBirthCalc(i,"child", cPageTitle);
                      }
                   }
@@ -616,29 +616,29 @@ public class AnalyzeDataQuality extends StructuredDataParser {
 
                      /* Update calc of earliest and latest birth years */
                      if (earliestMarriageYear!=null && 
-                           (earliestBirth[i]==null || (earliestMarriageYear - maxMarriageAge) > earliestBirth[i])) {
-                        earliestBirth[i] = earliestMarriageYear - maxMarriageAge;
+                           (earliestBirth[i]==null || (earliestMarriageYear - MAX_MARRIAGE_AGE) > earliestBirth[i])) {
+                        earliestBirth[i] = earliestMarriageYear - MAX_MARRIAGE_AGE;
                         if (latestBirth[i]==null) {
-                           latestBirth[i] = earliestBirth[i] + usualLongestLife; // somewhat arbitrary but needs a value if earliest set
+                           latestBirth[i] = earliestBirth[i] + USUAL_LONGEST_LIFE; // somewhat arbitrary but needs a value if earliest set
                         }
                         setBirthCalc(i,"own marriage", "");
                      }
                      if (latestMarriageYear!=null && (latestBirth[i]==null || 
-                           (latestMarriageYear - minMarriageAge) < latestBirth[i])) {
-                        latestBirth[i] = latestMarriageYear - minMarriageAge;
+                           (latestMarriageYear - MIN_MARRIAGE_AGE) < latestBirth[i])) {
+                        latestBirth[i] = latestMarriageYear - MIN_MARRIAGE_AGE;
                         if (earliestBirth[i]==null) {
-                           earliestBirth[i] = latestBirth[i] - usualLongestLife;  // somewhat arbitrary but needs a value if latest set
+                           earliestBirth[i] = latestBirth[i] - USUAL_LONGEST_LIFE;  // somewhat arbitrary but needs a value if latest set
                         }
                         setBirthCalc(i,"own marriage", "");
                      }
                      if (sEarliestBirth!=null && (earliestBirth[i]==null || 
-                           (sEarliestBirth - maxSpouseGap) > earliestBirth[i])) {
-                        earliestBirth[i] = sEarliestBirth - maxSpouseGap;
+                           (sEarliestBirth - MAX_SPOUSE_GAP) > earliestBirth[i])) {
+                        earliestBirth[i] = sEarliestBirth - MAX_SPOUSE_GAP;
                         setBirthCalc(i,"spouse", spousePageTitle);
                      }
                      if (sLatestBirth!=null && (latestBirth[i]==null || 
-                           (sLatestBirth + maxSpouseGap) < latestBirth[i])) {
-                        latestBirth[i] = sLatestBirth + maxSpouseGap;
+                           (sLatestBirth + MAX_SPOUSE_GAP) < latestBirth[i])) {
+                        latestBirth[i] = sLatestBirth + MAX_SPOUSE_GAP;
                         setBirthCalc(i,"spouse", spousePageTitle);
                      }
                   }
@@ -693,36 +693,36 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                               (earliestBirth[i]==null || parEarliestMarriageYear > earliestBirth[i])) {
                            earliestBirth[i] = parEarliestMarriageYear;
                            if (latestBirth[i]==null) {
-                              latestBirth[i] = earliestBirth[i] + usualLongestLife;  // somewhat arbitrary but needs a value if earliest set
+                              latestBirth[i] = earliestBirth[i] + USUAL_LONGEST_LIFE;  // somewhat arbitrary but needs a value if earliest set
                            }
                            setBirthCalc(i,"parent's marriage","");
                         }
                         if (parLatestMarriageYear!=null && 
-                              (latestBirth[i]==null || (parLatestMarriageYear + maxAfterParentMarriage) < latestBirth[i])) {
-                           latestBirth[i] = parLatestMarriageYear + maxAfterParentMarriage;
+                              (latestBirth[i]==null || (parLatestMarriageYear + MAX_AFTER_PARENT_MARRIAGE) < latestBirth[i])) {
+                           latestBirth[i] = parLatestMarriageYear + MAX_AFTER_PARENT_MARRIAGE;
                            if (earliestBirth[i]==null) {
-                              earliestBirth[i] = latestBirth[i] - usualLongestLife;  // somewhat arbitrary but needs a value if latest set
+                              earliestBirth[i] = latestBirth[i] - USUAL_LONGEST_LIFE;  // somewhat arbitrary but needs a value if latest set
                            }
                            setBirthCalc(i,"parent's marriage","");
                         }
                         if (mEarliestBirthYear!=null && (earliestBirth[i]==null ||
-                              (mEarliestBirthYear + usualYoungestMother) > earliestBirth[i])) {
-                           earliestBirth[i] = mEarliestBirthYear + usualYoungestMother;
+                              (mEarliestBirthYear + USUAL_YOUNGEST_MOTHER) > earliestBirth[i])) {
+                           earliestBirth[i] = mEarliestBirthYear + USUAL_YOUNGEST_MOTHER;
                            setBirthCalc(i,"mother's birth", mPageTitle);
                         }
                         if (mLatestBirthYear!=null && (latestBirth[i]==null || 
-                              (mLatestBirthYear + usualOldestMother) < latestBirth[i])) {
-                           latestBirth[i] = mLatestBirthYear + usualOldestMother;
+                              (mLatestBirthYear + USUAL_OLDEST_MOTHER) < latestBirth[i])) {
+                           latestBirth[i] = mLatestBirthYear + USUAL_OLDEST_MOTHER;
                            setBirthCalc(i,"mother's birth", mPageTitle);
                         }
                         if (fEarliestBirthYear!=null && (earliestBirth[i]==null || 
-                              (fEarliestBirthYear + usualYoungestFather) > earliestBirth[i])) {
-                           earliestBirth[i] = fEarliestBirthYear + usualYoungestFather;
+                              (fEarliestBirthYear + USUAL_YOUNGEST_FATHER) > earliestBirth[i])) {
+                           earliestBirth[i] = fEarliestBirthYear + USUAL_YOUNGEST_FATHER;
                            setBirthCalc(i,"father's birth", fPageTitle);
                         }
                         if (fLatestBirthYear!=null && (latestBirth[i]==null || 
-                              (fLatestBirthYear + usualOldestFather) < latestBirth[i])) {
-                           latestBirth[i] = fLatestBirthYear + usualOldestFather;
+                              (fLatestBirthYear + USUAL_OLDEST_FATHER) < latestBirth[i])) {
+                           latestBirth[i] = fLatestBirthYear + USUAL_OLDEST_FATHER;
                            setBirthCalc(i,"father's birth", fPageTitle);
                         }
                         if (mLatestDeathYear!=null && (latestBirth[i]==null || mLatestDeathYear < latestBirth[i])) {
@@ -764,13 +764,13 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                   for (int i=0; i<size; i++) {
                      if (parPageTitle.equals(parentPage[i])) {
                         if (sEarliestBirthYear != null && 
-                                 (earliestBirth[i]==null || (sEarliestBirthYear - maxSiblingGap) > earliestBirth[i])) {
-                           earliestBirth[i] = sEarliestBirthYear - maxSiblingGap;
+                                 (earliestBirth[i]==null || (sEarliestBirthYear - MAX_SIBLING_GAP) > earliestBirth[i])) {
+                           earliestBirth[i] = sEarliestBirthYear - MAX_SIBLING_GAP;
                            setBirthCalc(i,"sibling",sibPageTitle);
                         }
                         if (sLatestBirthYear != null && 
-                                 (latestBirth[i]==null || (sLatestBirthYear + maxSiblingGap) < latestBirth[i])) {
-                           latestBirth[i] = sLatestBirthYear + maxSiblingGap;
+                                 (latestBirth[i]==null || (sLatestBirthYear + MAX_SIBLING_GAP) < latestBirth[i])) {
+                           latestBirth[i] = sLatestBirthYear + MAX_SIBLING_GAP;
                            setBirthCalc(i,"sibling",sibPageTitle);
                         }
                      }
@@ -913,7 +913,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
       Calendar yesterday = Calendar.getInstance();
       yesterday.add(Calendar.DAY_OF_MONTH, -1);
       String effDate = ymdf.format(yesterday.getTime());
-      Integer livingTh = thisYear - usualLongestLife;
+      Integer livingTh = thisYear - USUAL_LONGEST_LIFE;
 
       // First delete rows for all but last 2 runs
       purgeIssues();
