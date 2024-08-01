@@ -16,7 +16,7 @@ java -Xmx1280m \
 ../lib/commons-httpclient-3.1.jar:\
 ../lib/commons-logging-1.1.1.jar:\
 ../lib/commons-cli-1.0.jar:\
-../lib/mysql-connector-java-5.0.4-bin.jar:\
+../lib/mysql-connector-j-8.0.33.jar:\
 ../lib/sparta.jar:\
 ../lib/SuperCSV-1.52.jar:\
 ../lib/shared.jar \
