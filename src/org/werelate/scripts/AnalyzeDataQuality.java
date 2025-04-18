@@ -47,7 +47,6 @@ import nu.xom.Element;
 public class AnalyzeDataQuality extends StructuredDataParser {
    private Connection sqlCon;
    private static int jobId = 0, round = 0, rows = 0, issueRows = 0, actionRows = 0;
-   private static int givenUnknown = 0, surnameUnknown = 0;
    private static SimpleDateFormat cachedtf = new SimpleDateFormat("yyyyMMddkkmmss");
    private static SimpleDateFormat logdtf = new SimpleDateFormat("yyyy-MM-dd kk:mm:ss");
    private static SimpleDateFormat ymdf = new SimpleDateFormat("yyyy-MM-dd");
@@ -131,37 +130,6 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                   for (int k=0; issues[k][0] != null; k++) {
                      createIssue(issues[k][0], issues[k][1], (issues[k][2].equals("Person") ? 108 : 110), SharedUtils.SqlTitle(issues[k][3]));
                   }
-
-                  // Determine whether a name is missing and count accordingly. 
-                  // Don't count missing given name if died young (in infancy, young, stillborn or birth year = death year).
-                  boolean countMissingGiven = true;
-                  if (diedYoungInd==1) {
-                     countMissingGiven = false;
-                  }
-                  if (earliestBirth!=null && latestBirth!=null && earliestDeath!=null && latestDeath!=null &&
-                        earliestBirth.equals(latestBirth) && earliestDeath.equals(latestDeath) && earliestBirth.equals(earliestDeath)) {
-                     countMissingGiven = false;
-                  }
-                  elms = root.getChildElements("name");
-                  if (elms.size()>0) {
-                     elm = elms.get(0);
-                     String givenName = elm.getAttributeValue("given");
-                     if (countMissingGiven && isUnknownName(givenName)) {
-//                        trackUnknownName(pageId, "given", givenName, diedYoungInd);
-                        givenUnknown++;
-                     }
-                     String surname = elm.getAttributeValue("surname");
-                     if (isUnknownName(surname)) {
-//                        trackUnknownName(pageId, "surname", surname, diedYoungInd);
-                        surnameUnknown++;
-                     }
-                  }
-                  else {
-                     if (countMissingGiven) {
-                        givenUnknown++;
-                     } 
-                     surnameUnknown++;
-                  }
                   
                   // Track whether the person is famous (allows living person) or has the ancient template (required if born before 700 AD)
                   if (text.contains("{{FamousLivingPersonException") || text.contains("{{Wikidata|Q")) {
@@ -240,37 +208,6 @@ public class AnalyzeDataQuality extends StructuredDataParser {
             /* Check for and handle deferral actions for this page */
             trackDeferralRequest(text, pageId, ns, splitTitle[1]);
          }   
-      }
-   }
-
-   // The rules in this function match the check in the wiki (StructuredData.php isUnknownName)
-   private boolean isUnknownName(String name) {
-      if (name==null) {
-         return true;
-      }
-      String[] unknownNames = {"", "unknown", "unk", "n.n.", "n.n", "nn", "nn.", "n n", "fnu", "lnu", "father", "mother"};
-      String checkName = name.replace("?","").replace("_","").replace("-","").trim().toLowerCase();
-      for (String unknownName : unknownNames) {
-         if (checkName.equals(unknownName)) {
-            return true;
-         }
-      }
-      return false;
-   } 
-
-   /* Write an unknown name to the database - potential for creating an issue in the future instead. 
-    * Note that this is inefficient (it commits one record at a time) and is not being used at this time.
-   */
-   private void trackUnknownName(int pageId, String nameType, String givenName, short diedYoungInd) {
-      String sql = "INSERT INTO dq_name_unknown (dqn_job_id, dqn_page_id, dqn_name_type, dqn_name, dqn_died_young_ind) VALUES(" + 
-            jobId + "," + pageId + ",\"" + nameType + "\",\"" + givenName + "\"," + diedYoungInd + ");";
-
-      try (PreparedStatement stmt = sqlCon.prepareStatement(sql)) {
-         stmt.executeUpdate();
-         commitSql();
-      } catch (SQLException e) {
-         rollbackSql();
-         e.printStackTrace();
       }
    }
 
@@ -929,18 +866,20 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                            "(SELECT dqi_namespace, dqi_title FROM dq_issue_capture WHERE dqi_job_id = " + jobId + ")) " +
                     "ORDER BY dq_page_id;";  
 
-      /* Statistics queries */                           
+      /* Statistics queries */ 
       String total = "SELECT dq_namespace, COUNT(*) AS count FROM dq_page_analysis " +
                      "WHERE dq_job_id = " + jobId + 
                      " GROUP BY dq_namespace;";
       String living = "SELECT COUNT(*) AS count FROM dq_page " +
                       "WHERE dq_job_id = " + jobId + " AND dq_namespace = 108 " +
                       "AND dq_latest_birth_year > " + livingTh + " " + 
-                      "AND dq_latest_death_year IS NULL AND dq_famous_ind = 0 AND dq_died_young_ind = 0;";
+                      "AND dq_latest_death_year IS NULL AND dq_famous_ind = 0 AND dq_died_young_ind = 0 " +
+                      "AND dq_title <> \"Unknown_(27824)\";";        // 1 possibly living person deemed not needing to be fixed or deleted
       String probLiving = "SELECT COUNT(*) AS count FROM dq_page " +
                       "WHERE dq_job_id = " + jobId + " AND dq_namespace = 108 " +
                       "AND dq_earliest_birth_year > " + livingTh + 
-                      " AND dq_latest_death_year IS NULL AND dq_famous_ind = 0 AND dq_died_young_ind = 0;";
+                      " AND dq_latest_death_year IS NULL AND dq_famous_ind = 0 AND dq_died_young_ind = 0 " +
+                      "AND dq_title <> \"Unknown_(27824)\";";        // 1 possibly living person deemed not needing to be fixed or deleted
       String noDate = "SELECT COUNT(*) AS count FROM dq_page " +
                       "WHERE dq_job_id = " + jobId + " AND dq_namespace = 108 " +
                       "AND dq_latest_birth_year IS NULL AND dq_latest_death_year IS NULL " + 
@@ -1080,30 +1019,6 @@ public class AnalyzeDataQuality extends StructuredDataParser {
          }
          rs.close();
       } catch (SQLException e) {
-         e.printStackTrace();
-      }
-
-      // Counts of missing given name and surname (counted during round 1)
-      try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
-         insertStmt.setString(1,effDate);
-         insertStmt.setString(2,"Incomplete");
-         insertStmt.setString(3,"Given name unknown");
-         insertStmt.setInt(4,givenUnknown);
-         insertStmt.executeUpdate();
-         commitSql();
-      } catch (SQLException e) {
-         rollbackSql();
-         e.printStackTrace();
-      }
-      try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
-         insertStmt.setString(1,effDate);
-         insertStmt.setString(2,"Incomplete");
-         insertStmt.setString(3,"Surname unknown");
-         insertStmt.setInt(4,surnameUnknown);
-         insertStmt.executeUpdate();
-         commitSql();
-      } catch (SQLException e) {
-         rollbackSql();
          e.printStackTrace();
       }
 
