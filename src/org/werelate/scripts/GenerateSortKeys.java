@@ -7,6 +7,7 @@ import org.supercsv.prefs.CsvPreference;
 import org.werelate.parser.StructuredDataParser;
 import org.werelate.parser.WikiReader;
 import org.werelate.utils.Util;
+import org.werelate.util.SharedUtils;
 
 import java.io.*;
 import java.util.HashMap;
@@ -18,10 +19,6 @@ public class GenerateSortKeys extends StructuredDataParser {
    private static final String[] FIELDS = {"key", "value"};
 
    private SortedSet<String> sortKeys = new TreeSet<String>();
-
-   private String removeIndexNumber(String title) {
-      return title.replaceAll("\\s*\\(\\d+\\)", "").trim();
-   }
 
    // keep in sync with PersonPageIndexer in indexer project
    private void appendAttr(String attr, StringBuilder buf) {
@@ -54,12 +51,12 @@ public class GenerateSortKeys extends StructuredDataParser {
             }
          }
       }
-      return removeIndexNumber(title);
+      return SharedUtils.removeIndexNumber(title);
    }
 
    // keep in sync with FamilyPageIndexer in indexer project
    private String getFamilySortTitle(String title) {
-      return removeIndexNumber(title);
+      return SharedUtils.removeIndexNumber(title);
    }
 
    // keep in sync with TitleSorter in indexer project

@@ -4,6 +4,7 @@ import org.apache.commons.cli.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.werelate.parser.WikiReader;
+import org.werelate.util.SharedUtils;
 import org.werelate.parser.StructuredDataParser;
 import org.werelate.utils.Util;
 
@@ -60,38 +61,32 @@ public class ProduceFamilyDuplicates extends StructuredDataParser
 
    private String getFamilyKey(String title) {
       String key = "";
-      int indexPos = title.lastIndexOf('(');
-      if (indexPos > 0) {
-         String titleNoIndexNumber = title.substring(0, indexPos).trim();
-         Matcher m = FAMILY_NAME_PATTERN.matcher(titleNoIndexNumber);
-         if (m.matches()) {
-            StringBuilder buf = new StringBuilder();
-            buf.append(cleanSurname(m.group(2)));
-            buf.append(' ');
-            buf.append(m.group(1));
-            buf.append(' ');
-            buf.append(cleanSurname(m.group(4)));
-            buf.append(' ');
-            buf.append(m.group(3));
-            key = buf.toString();
-         }
+      String titleNoIndexNumber = SharedUtils.removeIndexNumber(title);
+      Matcher m = FAMILY_NAME_PATTERN.matcher(titleNoIndexNumber);
+      if (m.matches()) {
+         StringBuilder buf = new StringBuilder();
+         buf.append(cleanSurname(m.group(2)));
+         buf.append(' ');
+         buf.append(m.group(1));
+         buf.append(' ');
+         buf.append(cleanSurname(m.group(4)));
+         buf.append(' ');
+         buf.append(m.group(3));
+         key = buf.toString();
       }
       return key;
    }
 
    private String getPersonKey(String title) {
       String key = "";
-      int indexPos = title.lastIndexOf('(');
-      if (indexPos > 0) {
-         String titleNoIndexNumber = title.substring(0, indexPos).trim();
-         Matcher m = PERSON_NAME_PATTERN.matcher(titleNoIndexNumber);
-         if (m.matches()) {
-            StringBuilder buf = new StringBuilder();
-            buf.append(cleanSurname(m.group(2)));
-            buf.append(' ');
-            buf.append(m.group(1));
-            key = buf.toString();
-         }
+      String titleNoIndexNumber = SharedUtils.removeIndexNumber(title);
+      Matcher m = PERSON_NAME_PATTERN.matcher(titleNoIndexNumber);
+      if (m.matches()) {
+         StringBuilder buf = new StringBuilder();
+         buf.append(cleanSurname(m.group(2)));
+         buf.append(' ');
+         buf.append(m.group(1));
+         key = buf.toString();
       }
       return key;
    }
