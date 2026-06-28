@@ -29,7 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.sql.*;
-import java.sql.Connection;
+
 import org.apache.logging.log4j.Logger;
 import java.util.HashMap;
 import java.util.regex.Pattern;
@@ -94,6 +94,10 @@ public class AnalyzeDataQuality extends StructuredDataParser {
             int ns = splitTitle[0].equals("Person") ? 108 : 110;
             String[] split = splitStructuredWikiText(splitTitle[0].equals("Person") ? "person" : "family", text);
             String structuredData = split[0];
+
+            // Variables written to the db only for reporting
+            Integer eventCount = 0, sourcedEventCount = 0;
+            short srcInd = 0;
 
             // Variables used in round 1 and written to the db for use in later rounds
             Integer earliestBirth = null, latestBirth = null, latestDeath = null;
@@ -174,6 +178,43 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                      wifePage = SharedUtils.SqlTitle(elm.getAttributeValue("title"));
                   }
                }
+
+               // Get sourcing info for both Person and Family pages.
+               // Count number of events/facts and number of them that have a source.
+               elms = root.getChildElements("event_fact");
+               for (int i = 0; i < elms.size(); i++) {
+                  elm = elms.get(i);
+                  if (!elm.getAttributeValue("type").equals("Reference Number")) {     // Ignore reference numbers
+                     eventCount++;
+                     if (!SharedUtils.isEmpty(elm.getAttributeValue("sources")) ||
+                              !SharedUtils.isEmpty(elm.getAttributeValue("images")) || 
+                              !SharedUtils.isEmpty(elm.getAttributeValue("notes"))) {
+                        sourcedEventCount++;
+                     }
+                     // Count as sourced if it is only an estimated date and has a description
+                     else if ((!SharedUtils.isEmpty(elm.getAttributeValue("date")) && elm.getAttributeValue("date").toLowerCase().startsWith("est")) && 
+                              SharedUtils.isEmpty(elm.getAttributeValue("place")) && !SharedUtils.isEmpty(elm.getAttributeValue("desc"))) {
+                        sourcedEventCount++;
+                     }
+                  }
+               }
+
+               // Determine whether there are any sources/notes (or images used as sources - included in sourceEventCount).
+               if (sourcedEventCount > 0) {
+                  srcInd = 1;
+               }
+               else {
+                  elms = root.getChildElements("source_citation");
+                  if (elms.size() > 0) {
+                     srcInd = 1;
+                  }
+                  else {
+                     elms = root.getChildElements("note");
+                     if (elms.size() > 0) {
+                        srcInd = 1;
+                     }
+                  }
+               }
             }
 
             // Prepare line for writing to the database
@@ -183,7 +224,8 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                      (parentPage==null ? "null" : "\"" + parentPage + "\"") + "," + 
                      (husbandPage==null ? "null" : "\"" + husbandPage + "\"") + "," + 
                      (wifePage==null ? "null" : "\"" + wifePage + "\"") + "," + 
-                     diedYoungInd + "," + famousInd + "," + ancientInd + ",\"" + 
+                     diedYoungInd + "," + famousInd + "," + ancientInd + "," + 
+                     eventCount + "," + sourcedEventCount + "," + srcInd + ",\"" + 
                      username + "\",\"" + birthCalc + "\")";
             if (rows==500) {
                insertRows();
@@ -251,6 +293,7 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                    "dq_latest_death_year, dq_earliest_marriage_year, dq_latest_marriage_year, " +
                    "dq_parent_page, dq_husband_page, dq_wife_page, " +
                    "dq_died_young_ind, dq_famous_ind, dq_ancient_ind, " +
+                   "dq_event_count, dq_sourced_event_count, dq_src_ind, " +
                    "dq_last_user, dq_birth_calc) VALUES";
       for (int i=0; i<rows; i++) {
          sql += rowValue[i];
@@ -896,6 +939,31 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                      "INNER JOIN dq_page ON dqi_page_id = dq_page_id AND dqi_job_id = dq_job_id " +
                      "WHERE dqi_job_id = " + jobId + " AND dqi_category IN ('Anomaly', 'Error') AND dqi_verified_by IS NULL) d " +
                      "GROUP BY dq_namespace;";
+      String nosrcnoevt = "SELECT dq_namespace, COUNT(*) AS count FROM dq_page_analysis " +
+                     "WHERE dq_job_id = " + jobId + " AND dq_src_ind = 0 AND dq_event_count = 0 " +
+                     "GROUP BY dq_namespace;";
+      String nosrcevt = "SELECT dq_namespace, COUNT(*) AS count FROM dq_page_analysis " +
+                     "WHERE dq_job_id = " + jobId + " AND dq_src_ind = 0 AND dq_event_count > 0 " +
+                     "GROUP BY dq_namespace;";
+      String srcnoevt = "SELECT dq_namespace, COUNT(*) AS count FROM dq_page_analysis " +
+                     "WHERE dq_job_id = " + jobId + " AND dq_src_ind = 1 AND dq_event_count = 0 " +
+                     "GROUP BY dq_namespace;";
+      String src0evt = "SELECT dq_namespace, COUNT(*) AS count FROM dq_page_analysis " +
+                     "WHERE dq_job_id = " + jobId + " AND dq_src_ind = 1 AND dq_event_count > 0 " +
+                     "AND dq_sourced_event_count = 0 " +
+                     "GROUP BY dq_namespace;";
+      String src49evt = "SELECT dq_namespace, COUNT(*) AS count FROM dq_page_analysis " +
+                     "WHERE dq_job_id = " + jobId + " AND dq_src_ind = 1 AND dq_event_count > 0 " +
+                     "AND dq_sourced_event_count / dq_event_count > 0 AND dq_sourced_event_count / dq_event_count < .5 " +
+                     "GROUP BY dq_namespace;";
+      String src99evt = "SELECT dq_namespace, COUNT(*) AS count FROM dq_page_analysis " +
+                     "WHERE dq_job_id = " + jobId + " AND dq_src_ind = 1 AND dq_event_count > 0 " +
+                     "AND dq_sourced_event_count / dq_event_count >= .5 AND dq_sourced_event_count / dq_event_count < 1 " +
+                     "GROUP BY dq_namespace;";
+      String src100evt = "SELECT dq_namespace, COUNT(*) AS count FROM dq_page_analysis " +
+                     "WHERE dq_job_id = " + jobId + " AND dq_src_ind = 1 AND dq_event_count > 0 " +
+                     "AND dq_sourced_event_count / dq_event_count = 1 " +
+                     "GROUP BY dq_namespace;";
 
       /* Statement to write statistics to the stats table */               
       String stats = "INSERT INTO dq_stats (dqs_job_id, dqs_date, dqs_category, dqs_issue_desc, dqs_count) " +
@@ -1009,6 +1077,125 @@ public class AnalyzeDataQuality extends StructuredDataParser {
                insertStmt.setString(1,effDate);
                insertStmt.setString(2,"Impact");
                insertStmt.setString(3,getInteger(rs,"dq_namespace")==108 ? "Person pages with error/anomaly" : "Family pages with error/anomaly");
+               insertStmt.setInt(4,rs.getInt("count"));
+               insertStmt.executeUpdate();
+               commitSql();
+            } catch (SQLException e) {
+               rollbackSql();
+               e.printStackTrace();
+            }
+         }
+         rs.close();
+
+         rs = stmt.executeQuery(nosrcnoevt);
+         while (rs.next()) {
+            try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
+               insertStmt.setString(1,effDate);
+               insertStmt.setString(2,"Sources");
+               insertStmt.setString(3,getInteger(rs,"dq_namespace")==108 ? 
+                     "Person pages with no sources/notes, no events" : "Family pages with no sources/notes, no events");
+               insertStmt.setInt(4,rs.getInt("count"));
+               insertStmt.executeUpdate();
+               commitSql();
+            } catch (SQLException e) {
+               rollbackSql();
+               e.printStackTrace();
+            }
+         }
+         rs.close();
+
+         rs = stmt.executeQuery(nosrcevt);
+         while (rs.next()) {
+            try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
+               insertStmt.setString(1,effDate);
+               insertStmt.setString(2,"Sources");
+               insertStmt.setString(3,getInteger(rs,"dq_namespace")==108 ? 
+                     "Person pages with no sources/notes, events" : "Family pages with no sources/notes, events");
+               insertStmt.setInt(4,rs.getInt("count"));
+               insertStmt.executeUpdate();
+               commitSql();
+            } catch (SQLException e) {
+               rollbackSql();
+               e.printStackTrace();
+            }
+         }
+         rs.close();
+
+         rs = stmt.executeQuery(srcnoevt);
+         while (rs.next()) {
+            try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
+               insertStmt.setString(1,effDate);
+               insertStmt.setString(2,"Sources");
+               insertStmt.setString(3,getInteger(rs,"dq_namespace")==108 ? 
+                     "Person pages with sources/notes, no events" : "Family pages with sources/notes, no events");
+               insertStmt.setInt(4,rs.getInt("count"));
+               insertStmt.executeUpdate();
+               commitSql();
+            } catch (SQLException e) {
+               rollbackSql();
+               e.printStackTrace();
+            }
+         }
+         rs.close();
+
+         rs = stmt.executeQuery(src0evt);
+         while (rs.next()) {
+            try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
+               insertStmt.setString(1,effDate);
+               insertStmt.setString(2,"Sources");
+               insertStmt.setString(3,getInteger(rs,"dq_namespace")==108 ? 
+                     "Person pages with sources/notes, 0% events sourced" : "Family pages with sources/notes, 0% events sourced");
+               insertStmt.setInt(4,rs.getInt("count"));
+               insertStmt.executeUpdate();
+               commitSql();
+            } catch (SQLException e) {
+               rollbackSql();
+               e.printStackTrace();
+            }
+         }
+         rs.close();
+
+         rs = stmt.executeQuery(src49evt);
+         while (rs.next()) {
+            try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
+               insertStmt.setString(1,effDate);
+               insertStmt.setString(2,"Sources");
+               insertStmt.setString(3,getInteger(rs,"dq_namespace")==108 ? 
+                     "Person pages with sources/notes, 1-49% events sourced" : "Family pages with sources/notes, 1-49% events sourced");
+               insertStmt.setInt(4,rs.getInt("count"));
+               insertStmt.executeUpdate();
+               commitSql();
+            } catch (SQLException e) {
+               rollbackSql();
+               e.printStackTrace();
+            }
+         }
+         rs.close();
+
+         rs = stmt.executeQuery(src99evt);
+         while (rs.next()) {
+            try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
+               insertStmt.setString(1,effDate);
+               insertStmt.setString(2,"Sources");
+               insertStmt.setString(3,getInteger(rs,"dq_namespace")==108 ? 
+                     "Person pages with sources/notes, 50-99% events sourced" : "Family pages with sources/notes, 50-99% events sourced");
+               insertStmt.setInt(4,rs.getInt("count"));
+               insertStmt.executeUpdate();
+               commitSql();
+            } catch (SQLException e) {
+               rollbackSql();
+               e.printStackTrace();
+            }
+         }
+         rs.close();
+
+         rs = stmt.executeQuery(src100evt);
+         while (rs.next()) {
+            try (PreparedStatement insertStmt = sqlCon.prepareStatement(stats)) {
+               insertStmt.setString(1,effDate);
+               insertStmt.setString(2,"Sources");
+               insertStmt.setString(3,getInteger(rs,"dq_namespace")==108 ? 
+                     "Person pages with sources/notes, 100% events sourced" : "Family pages with sources/notes, 100% events sourced");
                insertStmt.setInt(4,rs.getInt("count"));
                insertStmt.executeUpdate();
                commitSql();
