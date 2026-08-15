@@ -48,9 +48,11 @@ public class UpdateFscatalogLinks {
    private static final Pattern TITLENO = Pattern.compile("titleno=(\\d+)", Pattern.CASE_INSENSITIVE);
 
    private PageEditor editor;
+   private boolean dryRun;
 
-   public UpdateFscatalogLinks(String host, String password) {
+   public UpdateFscatalogLinks(String host, String password, boolean dryRun) {
       editor = new PageEditor(host, password);
+      this.dryRun = dryRun;
    }
 
    /**
@@ -93,6 +95,11 @@ public class UpdateFscatalogLinks {
          logger.info("No change: " + sourceTitle);
          return;
       }
+      if (dryRun) {
+         logger.info("WOULD UPDATE: " + sourceTitle);
+         logChangedLines(text, updated);
+         return;
+      }
       editor.setPostVariable("xml", "1"); // stay in raw-XML mode on save (no field reconstruction)
       editor.setPostVariable("wpTextbox1", updated);
       editor.setPostVariable("wpSummary", "replace broken FamilySearch catalog links with {{fscatalog}} template");
@@ -101,15 +108,46 @@ public class UpdateFscatalogLinks {
       logger.info("Updated: " + sourceTitle);
    }
 
-   // 0=source_titles.txt (one Source page title per line, with or without the "Source:" prefix)
-   // 1=host  2=agent password
+   /**
+    * Log a line-by-line before/after diff of the lines that changed, so a dry run can be reviewed.
+    */
+   private static void logChangedLines(String before, String after) {
+      String[] beforeLines = before.split("\n", -1);
+      String[] afterLines = after.split("\n", -1);
+      int n = Math.max(beforeLines.length, afterLines.length);
+      for (int i = 0; i < n; i++) {
+         String b = i < beforeLines.length ? beforeLines[i] : "";
+         String a = i < afterLines.length ? afterLines[i] : "";
+         if (!b.equals(a)) {
+            logger.info("  - " + b);
+            logger.info("  + " + a);
+         }
+      }
+   }
+
+   // <source_titles.txt> (one Source page title per line, with or without the "Source:" prefix)
+   //   <host> <agent password> [--dryrun]
+   // With --dryrun, pages are fetched and the before/after diff is logged, but nothing is saved.
    public static void main(String[] args) throws IOException {
-      if (args.length < 3) {
-         System.out.println("Usage: UpdateFscatalogLinks <source_titles.txt> <host> <password>");
+      boolean dryRun = false;
+      java.util.List<String> pos = new java.util.ArrayList<String>();
+      for (String arg : args) {
+         if (arg.equals("--dryrun")) {
+            dryRun = true;
+         }
+         else {
+            pos.add(arg);
+         }
+      }
+      if (pos.size() < 3) {
+         System.out.println("Usage: UpdateFscatalogLinks <source_titles.txt> <host> <password> [--dryrun]");
          return;
       }
-      UpdateFscatalogLinks updater = new UpdateFscatalogLinks(args[1], args[2]);
-      BufferedReader in = new BufferedReader(new FileReader(args[0]));
+      if (dryRun) {
+         logger.info("DRY RUN -- no pages will be saved");
+      }
+      UpdateFscatalogLinks updater = new UpdateFscatalogLinks(pos.get(1), pos.get(2), dryRun);
+      BufferedReader in = new BufferedReader(new FileReader(pos.get(0)));
       try {
          while (in.ready()) {
             String line = in.readLine();
