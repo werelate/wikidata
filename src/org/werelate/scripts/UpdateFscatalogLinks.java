@@ -3,13 +3,19 @@ package org.werelate.scripts;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.werelate.editor.PageEditor;
+import org.werelate.parser.StructuredDataParser;
+import org.werelate.parser.WikiReader;
 import org.werelate.utils.Util;
+
+import nu.xom.ParsingException;
 
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
+import java.util.List;
+import java.util.ArrayList;
 import java.io.IOException;
-import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.InputStream;
+import java.io.FileInputStream;
 
 /**
  * Replace broken FamilySearch FHLC catalog links on Source pages with the {{fscatalog|N}} template.
@@ -23,16 +29,24 @@ import java.io.FileReader;
  * A broken link can appear in two places on a Source page:
  *   1. the repository table, in a repository's source_location attribute, and
  *   2. the free-text body of the page.
- * Rather than round-tripping the structured edit form field-by-field (which risks dropping
- * fields that PageEditor cannot faithfully reproduce, such as multi-valued subjects or the
- * volumes field), we edit the page in raw-XML mode. Passing xml=1 to the editor tells the
- * structured-namespace code (StructuredData::renderEditFields / importEditData) to skip
- * splitting the page into edit fields and skip reconstructing it on save, so wpTextbox1 holds
- * the complete raw wikitext -- repository XML and body together. A single regex pass over that
- * text fixes both places at once and preserves everything else verbatim.
+ *
+ * The script reads a pages.xml dump to find the Source pages that contain such a URL, then edits
+ * each of those pages on the live wiki. Using the dump only as a candidate filter means we fetch
+ * and save just the pages that actually need fixing, and we never operate on stale dump text --
+ * the replacement is always applied to the current live wikitext.
+ *
+ * Each candidate page is edited in raw-XML mode. Passing xml=1 to the editor tells the
+ * structured-namespace code (StructuredData::renderEditFields / importEditData) to skip splitting
+ * the page into edit fields and skip reconstructing it on save, so wpTextbox1 holds the complete
+ * raw wikitext -- repository XML and body together. A single regex pass over that text fixes both
+ * places at once and preserves everything else verbatim (avoiding the field-by-field data-loss
+ * risk of the UpdateSourceRepos approach).
  */
-public class UpdateFscatalogLinks {
+public class UpdateFscatalogLinks extends StructuredDataParser {
    private static Logger logger = LogManager.getLogger("org.werelate.scripts");
+
+   // Cheap case-insensitive test for whether a page is a candidate worth fetching from the dump.
+   private static final Pattern FHLC_HINT = Pattern.compile("fhlcatalog/supermainframeset", Pattern.CASE_INSENSITIVE);
 
    // Matches a broken FamilySearch FHLC catalog URL. Case-insensitive on scheme/host/path, and
    // consumes the whole query string up to the first whitespace or wikitext/HTML delimiter.
@@ -82,6 +96,23 @@ public class UpdateFscatalogLinks {
       return sb.toString();
    }
 
+   /**
+    * WikiReader callback, invoked once per (non-redirect) page in the dump. Source pages whose
+    * text contains an FHLC catalog URL are fixed on the live wiki; everything else is ignored.
+    */
+   public void parse(String title, String text, int pageId, int latestRevId, String username, String timestamp, String comment)
+           throws IOException, ParsingException {
+      if (!title.startsWith("Source:") || text == null || !FHLC_HINT.matcher(text).find()) {
+         return;
+      }
+      try {
+         updatePage(title);
+      }
+      catch (RuntimeException e) {
+         logger.error("Failed: " + title + " -> " + e);
+      }
+   }
+
    public void updatePage(String sourceTitle) {
       // Fetch the edit form in raw-XML mode so wpTextbox1 holds the complete raw wikitext.
       editor.doGet(sourceTitle, true, "xml=1");
@@ -92,6 +123,7 @@ public class UpdateFscatalogLinks {
       }
       String updated = replaceLinks(text);
       if (updated.equals(text)) {
+         // The live page no longer contains a broken link (e.g. already fixed by hand since the dump).
          logger.info("No change: " + sourceTitle);
          return;
       }
@@ -125,12 +157,13 @@ public class UpdateFscatalogLinks {
       }
    }
 
-   // <source_titles.txt> (one Source page title per line, with or without the "Source:" prefix)
-   //   <host> <agent password> [--dryrun]
-   // With --dryrun, pages are fetched and the before/after diff is logged, but nothing is saved.
-   public static void main(String[] args) throws IOException {
+   // <pages.xml> <host> <agent password> [--dryrun]
+   // Scans the dump for Source pages containing a broken FamilySearch catalog link and fixes them
+   // on the live wiki. With --dryrun, pages are fetched and the before/after diff is logged, but
+   // nothing is saved.
+   public static void main(String[] args) throws IOException, ParsingException {
       boolean dryRun = false;
-      java.util.List<String> pos = new java.util.ArrayList<String>();
+      List<String> pos = new ArrayList<String>();
       for (String arg : args) {
          if (arg.equals("--dryrun")) {
             dryRun = true;
@@ -140,34 +173,19 @@ public class UpdateFscatalogLinks {
          }
       }
       if (pos.size() < 3) {
-         System.out.println("Usage: UpdateFscatalogLinks <source_titles.txt> <host> <password> [--dryrun]");
+         System.out.println("Usage: UpdateFscatalogLinks <pages.xml> <host> <password> [--dryrun]");
          return;
       }
       if (dryRun) {
          logger.info("DRY RUN -- no pages will be saved");
       }
-      UpdateFscatalogLinks updater = new UpdateFscatalogLinks(pos.get(1), pos.get(2), dryRun);
-      BufferedReader in = new BufferedReader(new FileReader(pos.get(0)));
+      UpdateFscatalogLinks self = new UpdateFscatalogLinks(pos.get(1), pos.get(2), dryRun);
+      WikiReader wikiReader = new WikiReader();
+      wikiReader.setSkipRedirects(true);
+      wikiReader.addWikiPageParser(self);
+      InputStream in = new FileInputStream(pos.get(0));
       try {
-         while (in.ready()) {
-            String line = in.readLine();
-            if (line == null) {
-               break;
-            }
-            String title = line.trim();
-            if (Util.isEmpty(title)) {
-               continue;
-            }
-            if (!title.startsWith("Source:")) {
-               title = "Source:" + title;
-            }
-            try {
-               updater.updatePage(title);
-            }
-            catch (RuntimeException e) {
-               logger.error("Failed: " + title + " -> " + e);
-            }
-         }
+         wikiReader.read(in);
       }
       finally {
          in.close();
